@@ -46,6 +46,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-#google service
-google-services.json
-android/app/google-services.json
+# google-services.json / GoogleService-Info.plist sao versionados de proposito:
+# o repositorio e privado e assim quem clona nao precisa configurar o Firebase.
