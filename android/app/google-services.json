@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "252491287569",
+    "project_id": "notatcatolica",
+    "storage_bucket": "notatcatolica.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:252491287569:android:2e6b19634f5c6ada8375b0",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_again"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCzv6j2WbMHZbttX9I5ziLbQ2gEdcPy_FE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
