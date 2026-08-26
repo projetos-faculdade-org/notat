@@ -95,7 +95,6 @@ class EditNoteState extends ConsumerState<EditNote> {
                     controller: _controller,
                     multiRowsDisplay: false,
                     showIndent: true,
-                    showImageButton: false,
                     dialogTheme: editor.QuillDialogTheme(
                         inputTextStyle: TextStyle(color: Colors.white),
                         labelTextStyle: TextStyle(color: Colors.white)),
@@ -109,7 +108,6 @@ class EditNoteState extends ConsumerState<EditNote> {
                     showCodeBlock: true,
                     showFontFamily: false,
                     showInlineCode: false,
-                    showVideoButton: false,
                   )
                 ],
               ),

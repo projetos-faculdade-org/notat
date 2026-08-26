@@ -48,3 +48,10 @@ app.*.map.json
 
 # google-services.json / GoogleService-Info.plist sao versionados de proposito:
 # o repositorio e privado e assim quem clona nao precisa configurar o Firebase.
+# Plataformas desktop/web foram removidas de proposito (commit 66c69fe
+# "deleting web and desktop folders"). Rodar `flutter create .` regenera
+# essas pastas sem querer - ignoradas para nao voltarem pro repositorio.
+/linux/
+/macos/
+/windows/
+/web/

@@ -75,7 +75,6 @@ class _CreateNoteState extends State<CreateNote> {
                 controller: _controller,
                 multiRowsDisplay: false,
                 showIndent: true,
-                showImageButton: false,
                 dialogTheme: editor.QuillDialogTheme(
                     inputTextStyle: TextStyle(color: Colors.white),
                     labelTextStyle: TextStyle(color: Colors.white)),
@@ -89,7 +88,6 @@ class _CreateNoteState extends State<CreateNote> {
                 showCodeBlock: true,
                 showFontFamily: false,
                 showInlineCode: false,
-                showVideoButton: false,
               )
             ],
           ))
