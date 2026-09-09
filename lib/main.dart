@@ -10,9 +10,13 @@ import 'package:flutter_application_again/screens/wrapper.dart';
 import 'package:flutter_application_again/utils/colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'firebase_options.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: kIsWeb ? DefaultFirebaseOptions.web : null,
+  );
   FlutterError.onError = (details) {
     //whenever there's an error, exit the app
     FlutterError.presentError(details);

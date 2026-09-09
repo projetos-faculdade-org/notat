@@ -55,3 +55,6 @@ app.*.map.json
 /macos/
 /windows/
 /web/
+
+# FVM Version Cache
+.fvm/
