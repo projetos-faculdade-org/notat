@@ -89,12 +89,12 @@ class _HomePageState extends State<HomePage>
                                   (() => showDialog(
                                       context: context,
                                       builder: (dialogContext) {
-                                        return deleteAccountDialog();
+                                        return const DeleteAccountDialog();
                                       })));
                             },
                             value: 3,
                             child: const Text(
-                              'Delete Account',
+                              'Excluir meus dados',
                               style: TextStyle(
                                   color: Colors.red,
                                   fontWeight: FontWeight.w600),
