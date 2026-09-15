@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -12,11 +13,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'firebase_options.dart';
 
+final rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: kIsWeb ? DefaultFirebaseOptions.web : null,
   );
+  if (!kIsWeb) {
+    FirebaseFirestore.instance.settings =
+        const Settings(persistenceEnabled: true);
+  }
   FlutterError.onError = (details) {
     //whenever there's an error, exit the app
     FlutterError.presentError(details);
@@ -33,6 +40,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       useInheritedMediaQuery: true,
       locale: DevicePreview.locale(context),
       debugShowCheckedModeBanner: false,

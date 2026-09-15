@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_again/models/note.dart';
 import 'package:flutter_application_again/resources/auth_methods.dart';
 import 'package:flutter_application_again/resources/firstore_folder_methods.dart';
-import 'package:flutter_application_again/resources/internet_connection.dart';
 import 'package:uuid/uuid.dart';
 
 class FirestoreService {
@@ -17,7 +16,6 @@ class FirestoreService {
       String folder = 'All',
       required DateTime date}) async {
     final String uid = const Uuid().v4();
-    final internet = await Connection.checkInternet();
     final Note note = Note(
         folder: folder,
         document: document,
@@ -28,9 +26,6 @@ class FirestoreService {
         title: title.isNotEmpty ? title : 'untitled');
 
     try {
-      if (!internet) {
-        return 'No internet connection';
-      }
       await _firestore.collection(userUid).doc(uid).set(note.toJson());
       await firestoreFolder.addDocToFolder(folderField: folder, noteUid: uid);
     } on FirebaseException catch (e) {
@@ -47,7 +42,6 @@ class FirestoreService {
       required folder,
       required String noteUid,
       required DateTime date}) async {
-    final internet = await Connection.checkInternet();
     final Note note = Note(
         folder: folder,
         searchableDocument:
@@ -58,9 +52,6 @@ class FirestoreService {
         title: title.isNotEmpty ? title : 'untitled');
 
     try {
-      if (!internet) {
-        return 'No internet connection';
-      }
       await _firestore.collection(userUid).doc(noteUid).set(note.toJson());
       await firestoreFolder.updateFolder(
           folderField: folder,

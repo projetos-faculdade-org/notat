@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_again/main.dart';
 import 'package:flutter_application_again/resources/firestore_methods.dart';
+import 'package:flutter_application_again/resources/internet_connection.dart';
 import 'package:flutter_application_again/widgets/notesRelated/custom_app_bar.dart';
 import 'package:flutter_application_again/widgets/notesRelated/note_header.dart';
 import 'package:flutter_application_again/widgets/reusedComponents/snackbar.dart';
@@ -47,12 +49,19 @@ class _CreateNoteState extends State<CreateNote> {
                         title: _titleController.text,
                         folder: selected.value,
                         date: DateTime.now())
-                    .then((value) {
+                    .then((value) async {
+                  final String feedback;
                   if (value != null) {
-                    CustomSnackBar.show(
-                        context, '$value', Duration(seconds: 2));
+                    feedback = value;
+                  } else {
+                    final hasInternet = await Connection.checkInternet();
+                    feedback = hasInternet
+                        ? 'Nota salva'
+                        : 'Nota salva localmente. Será sincronizada quando a internet voltar.';
                   }
                   Navigator.pop(context);
+                  CustomSnackBar.showGlobal(
+                      rootScaffoldMessengerKey, feedback);
                 });
               }),
               NoteHeader(

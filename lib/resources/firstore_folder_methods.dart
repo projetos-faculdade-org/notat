@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_again/resources/auth_methods.dart';
 import 'package:flutter_application_again/resources/firestore_methods.dart';
-import 'package:flutter_application_again/resources/internet_connection.dart';
 
 class FirestoreFolderService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -9,7 +8,6 @@ class FirestoreFolderService {
 
   createMainFolder() async {
     //create the folder 'All' so you have a document to start with
-    _firestore.settings.copyWith(persistenceEnabled: true);
     List<String> notes = [];
     try {
       await _firestore.collection(userUid).doc('folders').set({'All': notes});
@@ -19,12 +17,8 @@ class FirestoreFolderService {
   }
 
   Future<String?> createFolder(String name) async {
-    final internet = await Connection.checkInternet();
     List<String> notes = [];
     try {
-      if (!internet) {
-        return 'No internet connection';
-      }
       await _firestore.collection(userUid).doc('folders').update({name: notes});
     } on FirebaseException catch (e) {
       return e.message;
