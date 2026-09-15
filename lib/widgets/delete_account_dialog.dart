@@ -69,10 +69,17 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
 
     final result = await _auth.deleteAccount();
 
-    // Fecha o dialogo antes da mensagem: com a conta apagada o Wrapper troca
-    // a HomePage pela tela de introducao, e o snackbar precisa sobreviver a
-    // isso -- por isso ele vai pelo messenger da raiz, nao pelo context daqui.
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) {
+      if (result.success) {
+        
+        Navigator.of(context, rootNavigator: true)
+            .popUntil((route) => route.isFirst);
+      } else {
+       
+        Navigator.of(context).pop();
+      }
+    }
+
 
     final plural = result.deletedNotes == 1 ? 'nota' : 'notas';
     CustomSnackBar.showGlobal(
