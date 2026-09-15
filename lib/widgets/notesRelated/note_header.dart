@@ -54,8 +54,8 @@ class NoteHeader extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   snapshot == null
-                      ? 'Date: ${Jiffy(DateTime.now()).yMMMEdjm} |'
-                      : 'Last update: ${Jiffy(snapshot['date'].toDate()).yMMMEdjm} |',
+                      ? "Date: ${Jiffy.now().format(pattern: 'EEE, MMM d, y h:mm a')} |"
+                      : "Last update: ${Jiffy.parseFromDateTime(snapshot['date'].toDate()).format(pattern: 'EEE, MMM d, y h:mm a')} |",
                   style:
                       GoogleFonts.ubuntu(fontSize: 14, color: Colors.white30),
                 ),

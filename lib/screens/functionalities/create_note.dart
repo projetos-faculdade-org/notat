@@ -70,33 +70,34 @@ class _CreateNoteState extends State<CreateNote> {
                   selected: selected,
                   snapshot: null),
               Expanded(
-                child: editor.QuillEditor(
-                    focusNode: FocusNode(),
-                    scrollable: true,
-                    autoFocus: false,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    scrollController: ScrollController(),
+                child: editor.QuillEditor.basic(
+                  controller: _controller,
+                  config: const editor.QuillEditorConfig(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
                     expands: true,
-                    controller: _controller,
-                    readOnly: false),
+                  ),
+                ),
               ),
-              editor.QuillToolbar.basic(
+              editor.QuillSimpleToolbar(
                 controller: _controller,
-                multiRowsDisplay: false,
-                showIndent: true,
-                dialogTheme: editor.QuillDialogTheme(
+                config: const editor.QuillSimpleToolbarConfig(
+                  multiRowsDisplay: false,
+                  showIndent: true,
+                  dialogTheme: editor.QuillDialogTheme(
                     inputTextStyle: TextStyle(color: Colors.white),
-                    labelTextStyle: TextStyle(color: Colors.white)),
-                showLink: true,
-                showDirection: false,
-                showBackgroundColorButton: false,
-                showRedo: true,
-                showSearchButton: true,
-                showFontSize: false,
-                showAlignmentButtons: true,
-                showCodeBlock: true,
-                showFontFamily: false,
-                showInlineCode: false,
+                    labelTextStyle: TextStyle(color: Colors.white),
+                  ),
+                  showLink: true,
+                  showDirection: false,
+                  showBackgroundColorButton: false,
+                  showRedo: true,
+                  showSearchButton: true,
+                  showFontSize: false,
+                  showAlignmentButtons: true,
+                  showCodeBlock: true,
+                  showFontFamily: false,
+                  showInlineCode: false,
+                ),
               )
             ],
           ))
