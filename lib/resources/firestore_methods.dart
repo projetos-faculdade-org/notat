@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_application_again/models/deletion_result.dart';
 import 'package:flutter_application_again/models/note.dart';
 import 'package:flutter_application_again/resources/auth_methods.dart';
 import 'package:flutter_application_again/resources/firstore_folder_methods.dart';
@@ -114,16 +117,40 @@ class FirestoreService {
     return null;
   }
 
-  Future<String?> deleteAllDocs(String uid) async {
+  Future<int> countNotes() async {
+    final snapshot = await _firestore.collection(userUid).get();
+    return snapshot.docs.where((doc) => doc.id != 'folders').length;
+  }
+
+  Future<DeletionResult> deleteAllUserData() async {
+    int deletedNotes = 0;
     try {
-      await _firestore.collection(userUid).get().then((value) {
-        for (DocumentSnapshot ds in value.docs) {
-          ds.reference.delete();
+      final docs = (await _firestore.collection(userUid).get()).docs;
+
+      for (var i = 0; i < docs.length; i += 500) {
+        final chunk = docs.sublist(i, min(i + 500, docs.length));
+        final batch = _firestore.batch();
+        for (final doc in chunk) {
+          batch.delete(doc.reference);
         }
-      });
+        await batch.commit();
+        deletedNotes += chunk.where((doc) => doc.id != 'folders').length;
+      }
+
+      final leftover = await _firestore
+          .collection(userUid)
+          .get(const GetOptions(source: Source.server));
+      if (leftover.docs.isNotEmpty) {
+        return DeletionResult(
+            deletedNotes: deletedNotes,
+            error:
+                'ainda restam ${leftover.docs.length} registros no servidor');
+      }
     } on FirebaseException catch (e) {
-      return e.message;
+      return DeletionResult(
+          deletedNotes: deletedNotes,
+          error: e.message ?? 'erro ao apagar os dados');
     }
-    return null;
+    return DeletionResult(deletedNotes: deletedNotes);
   }
 }

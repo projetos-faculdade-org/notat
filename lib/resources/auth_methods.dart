@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_application_again/models/deletion_result.dart';
 import 'package:flutter_application_again/resources/firestore_methods.dart';
 import 'package:flutter_application_again/resources/firstore_folder_methods.dart';
+import 'package:flutter_application_again/resources/internet_connection.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -48,15 +50,27 @@ class AuthService {
     return null;
   }
 
-  Future<String?> deleteAccount() async {
-    try {
-      await FirestoreService().deleteAllDocs(useUid);
-      await _auth.currentUser!.delete();
-    } on FirebaseException catch (e) {
-      return e.message;
+  /// Apaga tudo que pertence ao usuario: notas, pastas e a propria conta.
+    Future<DeletionResult> deleteAccount() async {
+    if (!await Connection.checkInternet()) {
+      return const DeletionResult(error: 'sem conexão com a internet');
     }
 
-    return null;
+    final firestore = FirestoreService();
+
+    final result = await firestore.deleteAllUserData();
+    if (!result.success) {
+      return result;
+    }
+
+    try {
+      await _auth.currentUser!.delete();
+    } on FirebaseException catch (e) {
+      return DeletionResult(
+          deletedNotes: result.deletedNotes,
+          error: e.message ?? 'erro ao apagar a conta');
+    }
+    return result;
   }
 
   Future<String?> reloadUser() async {
