@@ -127,3 +127,18 @@ You can contribute by reporting bugs, suggesting improvements, and/or by helping
 [MIT](https://choosealicense.com/licenses/mit/)
 ## Acknowledgement
 Special thanks for these designers for inspiring me [1](https://dribbble.com/shots/11875872-A-simple-and-lightweight-note-app), [2](https://dribbble.com/shots/14995291--Notes-App-Dark-Mode)
+
+## Catálogo de code smells
+
+Cada smell foi corrigido com um teste de regressão escrito **antes** da mudança
+(commit `test(...)`), seguido do commit da refatoração/correção. Rode com `flutter test`.
+
+### Smell 1 — Verificação "está online?" duplicada no feedback ao salvar
+
+| Campo | Descrição |
+|---|---|
+| **Arquivo e trecho** | `lib/screens/functionalities/create_note.dart` (callback do `CustomAppBar`, após `addDocument`) e `lib/screens/functionalities/edit_note.dart` (após `updateDocument`). Os dois tinham o mesmo bloco: `if (value != null) feedback = value; else { hasInternet = await Connection.checkInternet(); feedback = hasInternet ? '...' : 'Nota salva localmente...'; }` |
+| **Smell** | Código duplicado (*Duplicated Code*): a regra de "está online?" e a mensagem de offline estavam copiadas nas duas telas; mudar uma exigia lembrar da outra. |
+| **Refatoração aplicada** | *Extract Function*: a regra foi para `saveFeedback()` em `lib/utils/save_feedback.dart`, com a verificação de internet injetável (`isOnline`, padrão `Connection.checkInternet`). As telas só passam o erro e a mensagem de sucesso. |
+| **Teste de regressão** | `test/save_feedback_test.dart`: erro do Firestore é mostrado e a internet nem é verificada; online mostra a mensagem de sucesso de cada tela; offline mostra "Nota salva localmente...". Passa antes e depois da refatoração. |
+| **Tipo** | Refatoração (comportamento idêntico). |
