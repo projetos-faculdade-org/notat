@@ -47,7 +47,7 @@ class FirestoreFolderService {
   Future<String?> addDocToFolder(
       {required String folderField, required String noteUid}) async {
     try {
-      _firestore.collection(userUid).doc('folders').update({
+      await _firestore.collection(userUid).doc('folders').update({
         folderField: FieldValue.arrayUnion([noteUid])
       });
     } on FirebaseException catch (e) {
@@ -81,7 +81,7 @@ class FirestoreFolderService {
   Future<String?> deleteDocFromFolder(
       {required String folderField, required String noteUid}) async {
     try {
-      _firestore.collection(userUid).doc('folders').update({
+      await _firestore.collection(userUid).doc('folders').update({
         folderField: FieldValue.arrayRemove([noteUid])
       });
     } on FirebaseException catch (e) {
@@ -93,13 +93,11 @@ class FirestoreFolderService {
   Future<String?> clearFolders() async {
     //Go inside the 'folder' doc, and set all folders to []
     try {
-      await _firestore
-          .collection(userUid)
-          .doc('folders')
-          .get()
-          .then((value) => value.data()?.forEach((key, value) {
-                _firestore.collection(userUid).doc('folders').update({key: []});
-              }));
+      final folders = _firestore.collection(userUid).doc('folders');
+      final names = (await folders.get()).data()?.keys ?? [];
+      if (names.isNotEmpty) {
+        await folders.update({for (final name in names) name: []});
+      }
     } on FirebaseException catch (e) {
       return e.message;
     }

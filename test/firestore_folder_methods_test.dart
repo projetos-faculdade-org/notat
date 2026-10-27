@@ -7,9 +7,11 @@ import 'package:mocktail/mocktail.dart';
 
 class MockFirestore extends Mock implements FirebaseFirestore {}
 
+// ignore: subtype_of_sealed_class
 class MockCollection extends Mock
     implements CollectionReference<Map<String, dynamic>> {}
 
+// ignore: subtype_of_sealed_class
 class MockDocument extends Mock
     implements DocumentReference<Map<String, dynamic>> {}
 

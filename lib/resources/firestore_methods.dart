@@ -84,14 +84,11 @@ class FirestoreService {
     final folder = _firestore.collection(userUid).doc('folders');
 
     try {
-      await _firestore.collection(userUid).get().then((value) {
-        //Delete all docs except the folder doc
-        for (DocumentSnapshot ds in value.docs) {
-          if (ds.reference != folder) {
-            ds.reference.delete();
-          }
-        }
-      });
+      final docs = (await _firestore.collection(userUid).get()).docs;
+      //Delete all docs except the folder doc
+      await Future.wait(docs
+          .where((ds) => ds.reference != folder)
+          .map((ds) => ds.reference.delete()));
       await firestoreFolder.clearFolders();
     } on FirebaseException catch (e) {
       return e.message;
@@ -102,11 +99,9 @@ class FirestoreService {
     var data =
         _firestore.collection(userUid).where('folder', isEqualTo: folder);
     try {
-      data.get().then((querySnapshot) {
-        querySnapshot.docs.forEach((element) {
-          element.reference.delete();
-        });
-      });
+      final querySnapshot = await data.get();
+      await Future.wait(
+          querySnapshot.docs.map((element) => element.reference.delete()));
     } on FirebaseException catch (e) {
       return e.message;
     }

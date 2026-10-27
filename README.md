@@ -103,3 +103,13 @@ Cada smell foi corrigido com um teste de regressão escrito **antes** da mudanç
 | **Refatoração aplicada** | *Extract Function*: a regra foi para `saveFeedback()` em `lib/utils/save_feedback.dart`, com a verificação de internet injetável (`isOnline`, padrão `Connection.checkInternet`). As telas só passam o erro e a mensagem de sucesso. |
 | **Teste de regressão** | `test/save_feedback_test.dart`: erro do Firestore é mostrado e a internet nem é verificada; online mostra a mensagem de sucesso de cada tela; offline mostra "Nota salva localmente...". Passa antes e depois da refatoração. |
 | **Tipo** | Refatoração (comportamento idêntico). |
+
+### Smell 2 — Chamada ao Firebase sem `await`: erro engolido
+
+| Campo | Descrição |
+|---|---|
+| **Arquivo e trecho** | `lib/resources/firstore_folder_methods.dart`: `addDocToFolder` e `deleteDocFromFolder` (`_firestore...update({...})` sem `await` dentro de `try/catch`) e `clearFolders` (`update` dentro de `.then/forEach`). `lib/resources/firestore_methods.dart`: `deleteDocsOfFolder` (`data.get().then(...)` sem `await`) e `clearAllNotes` (`ds.reference.delete()` dentro de `.then`). |
+| **Smell** | Tratamento de erro engolido / *fire-and-forget*: sem `await`, o `catch (FirebaseException)` nunca é executado. A função devolve `null` (que as telas tratam como sucesso), a exceção vaza como erro assíncrono não tratado, e as funções retornam antes de as escritas terminarem. |
+| **Refatoração aplicada** | `await` em todas as escritas (`Future.wait` para as exclusões em lote; `clearFolders` faz um único `update` com todas as pastas). Para testar, `FirestoreService` e `FirestoreFolderService` passaram a aceitar `firestore` e `userUid` opcionais no construtor; o padrão continua `FirebaseFirestore.instance` e o usuário logado. Dependências de teste: `fake_cloud_firestore` e `mocktail`. |
+| **Teste de regressão** | `test/firestore_folder_methods_test.dart`. **Caminho feliz** (Firestore fake: adicionar/remover nota de pasta, limpar pastas, apagar notas da pasta) passa antes e depois. **Caminho de erro** (mock cujo `update` lança `FirebaseException`): `addDocToFolder` e `deleteDocFromFolder` devem devolver a mensagem do erro. Esses falhavam antes (devolviam `null`) e passam depois. |
+| **Tipo** | Correção de bug. Por isso os testes de erro não passam "antes": eles provam o bug. O comportamento de sucesso fica protegido pelos testes do caminho feliz, que passam antes e depois. |
