@@ -3,8 +3,12 @@ import 'package:flutter_application_again/resources/auth_methods.dart';
 import 'package:flutter_application_again/resources/firestore_methods.dart';
 
 class FirestoreFolderService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final userUid = AuthService().useUid;
+  final FirebaseFirestore _firestore;
+  final String userUid;
+
+  FirestoreFolderService({FirebaseFirestore? firestore, String? userUid})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        userUid = userUid ?? AuthService().useUid;
 
   createMainFolder() async {
     //create the folder 'All' so you have a document to start with
@@ -33,7 +37,8 @@ class FirestoreFolderService {
     }
     try {
       await _firestore.collection(userUid).doc('folders').update(updates);
-      await FirestoreService().deleteDocsOfFolder(name);
+      await FirestoreService(firestore: _firestore, userUid: userUid)
+          .deleteDocsOfFolder(name);
     } on FirebaseException catch (e) {
       return e.message;
     }

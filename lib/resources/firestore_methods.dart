@@ -8,9 +8,17 @@ import 'package:flutter_application_again/resources/firstore_folder_methods.dart
 import 'package:uuid/uuid.dart';
 
 class FirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final firestoreFolder = FirestoreFolderService();
-  final userUid = AuthService().useUid;
+  final FirebaseFirestore _firestore;
+  final String userUid;
+  final FirestoreFolderService firestoreFolder;
+
+  FirestoreService({FirebaseFirestore? firestore, String? userUid})
+      : this._(firestore ?? FirebaseFirestore.instance,
+            userUid ?? AuthService().useUid);
+
+  FirestoreService._(this._firestore, this.userUid)
+      : firestoreFolder =
+            FirestoreFolderService(firestore: _firestore, userUid: userUid);
 
   Future<String?> addDocument(
       {required String document,
