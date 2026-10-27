@@ -113,3 +113,13 @@ Cada smell foi corrigido com um teste de regressão escrito **antes** da mudanç
 | **Refatoração aplicada** | `await` em todas as escritas (`Future.wait` para as exclusões em lote; `clearFolders` faz um único `update` com todas as pastas). Para testar, `FirestoreService` e `FirestoreFolderService` passaram a aceitar `firestore` e `userUid` opcionais no construtor; o padrão continua `FirebaseFirestore.instance` e o usuário logado. Dependências de teste: `fake_cloud_firestore` e `mocktail`. |
 | **Teste de regressão** | `test/firestore_folder_methods_test.dart`. **Caminho feliz** (Firestore fake: adicionar/remover nota de pasta, limpar pastas, apagar notas da pasta) passa antes e depois. **Caminho de erro** (mock cujo `update` lança `FirebaseException`): `addDocToFolder` e `deleteDocFromFolder` devem devolver a mensagem do erro. Esses falhavam antes (devolviam `null`) e passam depois. |
 | **Tipo** | Correção de bug. Por isso os testes de erro não passam "antes": eles provam o bug. O comportamento de sucesso fica protegido pelos testes do caminho feliz, que passam antes e depois. |
+
+### Smell 3 — Regra de montagem da nota duplicada
+
+| Campo | Descrição |
+|---|---|
+| **Arquivo e trecho** | `lib/resources/firestore_methods.dart`, `addDocument` e `updateDocument`. As duas montavam a `Note` repetindo `searchableDocument.toLowerCase().replaceAll('\\n', ' ')` e `title.isNotEmpty ? title : 'untitled'`. |
+| **Smell** | Código duplicado e regra de domínio no lugar errado (*Duplicated Code* / *Feature Envy*): a regra de como uma nota é normalizada pertence ao model `Note`, mas estava copiada no service. Mudar o título padrão ou a normalização da busca exigia lembrar dos dois métodos. |
+| **Refatoração aplicada** | *Extract Method* + *Move Method*: a regra virou a factory `Note.fromEditor(...)` em `lib/models/note.dart`, e `addDocument` e `updateDocument` passam a usá-la. |
+| **Teste de regressão** | `test/firestore_methods_note_test.dart` (Firestore fake): em `addDocument` e `updateDocument`, título vazio é salvo como `untitled`, título informado é mantido, e o texto buscável é salvo em minúsculas e sem `\n`. Passa antes e depois da refatoração. |
+| **Tipo** | Refatoração (comportamento idêntico). |
