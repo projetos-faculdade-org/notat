@@ -1,0 +1,45 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-and-test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ler versão do Flutter (.fvmrc)
+        id: fvm
+        run: |
+          VERSION=$(jq -r '.flutter // .flutterSdkVersion' .fvmrc)
+          echo "Versão no .fvmrc: $VERSION"
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "channel=stable" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "channel=$VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm.outputs.version }}
+          channel: ${{ steps.fvm.outputs.channel }}
+          cache: true
+
+      - run: flutter pub get
+      - name: flutter analyze
+        run: flutter analyze --no-fatal-infos
+      - name: flutter test
+        run: flutter test
