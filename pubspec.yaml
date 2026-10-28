@@ -45,6 +45,7 @@ dev_dependencies:
     sdk: flutter
   flutter_launcher_icons: ^0.9.2
   flutter_native_splash: ^2.0.1+1
+  flutter_lints: ^2.0.0
 
 # Forca todos os pacotes a usar a mesma versao do intl que o
 # flutter_localizations da SDK atual do Flutter ja exige (0.20.2).
@@ -59,8 +60,6 @@ flutter_icons:
   android: true
   ios: true
   image_path: "assets/logo.png"
-
-  flutter_lints: ^2.0.0
 
 flutter:
   uses-material-design: true
