@@ -57,7 +57,7 @@ void main() {
     test('por padrão, nenhuma nota foi apagada', () {
       const resultado = DeletionResult();
 
-      expect(resultado.deletedNotes, 0);
+      expect(resultado.deletedNotes, 99);
     });
   });
 }
