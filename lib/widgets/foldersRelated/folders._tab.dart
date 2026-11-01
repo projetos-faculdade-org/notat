@@ -1,12 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_application_again/main.dart';
 import 'package:flutter_application_again/providers/folders_provider.dart';
 import 'package:flutter_application_again/resources/firstore_folder_methods.dart';
 import 'package:flutter_application_again/screens/errorAndLoading/error_screen.dart';
 import 'package:flutter_application_again/screens/errorAndLoading/loading_screen.dart';
 import 'package:flutter_application_again/widgets/foldersRelated/folder_dialog.dart';
 import 'package:flutter_application_again/widgets/notesRelated/notes_inside_folder.dart';
+import 'package:flutter_application_again/widgets/reusedComponents/snackbar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focused_menu/focused_menu.dart';
 import 'package:focused_menu/modals.dart';
@@ -26,6 +28,17 @@ class _FoldersTabState extends State<FoldersTab> {
   void dispose() {
     folderController.dispose();
     super.dispose();
+  }
+
+  // Global messenger: a server rejection can arrive after leaving this tab.
+  Future<void> _reportFailures(
+      Future<String?> Function(void Function(String) onSyncError)
+          deletion) async {
+    void show(String message) => CustomSnackBar.showGlobal(
+        rootScaffoldMessengerKey, 'Deletion failed: $message');
+
+    final error = await deletion(show);
+    if (error != null) show(error);
   }
 
   @override
@@ -98,22 +111,33 @@ class _FoldersTabState extends State<FoldersTab> {
                         onPressed: () {
                           foldersBottomSheet(context, keys[index]);
                         },
-                        menuItems: keys[index] == 'All'
-                            ? [] //user can't delete the 'All' folder
-                            : [
-                                FocusedMenuItem(
-                                    trailingIcon: const Icon(
-                                      Icons.delete_forever_outlined,
-                                      color: Colors.white,
-                                    ),
-                                    title:
-                                        const Text('Delete (All notes inside)'),
-                                    onPressed: () async {
-                                      await FirestoreFolderService()
-                                          .deleteFolder(keys[index]);
-                                    },
-                                    backgroundColor: Colors.redAccent)
-                              ],
+                        menuItems: [
+                          FocusedMenuItem(
+                              trailingIcon: const Icon(
+                                Icons.cleaning_services_outlined,
+                                color: Colors.white,
+                              ),
+                              title: const Text('Empty folder'),
+                              onPressed: () => _reportFailures(
+                                  (onSyncError) => FirestoreFolderService()
+                                      .emptyFolder(keys[index],
+                                          onSyncError: onSyncError)),
+                              backgroundColor:
+                                  const Color.fromARGB(255, 57, 55, 78)),
+                          //user can't delete the 'All' folder
+                          if (keys[index] != 'All')
+                            FocusedMenuItem(
+                                trailingIcon: const Icon(
+                                  Icons.delete_forever_outlined,
+                                  color: Colors.white,
+                                ),
+                                title: const Text('Delete (All notes inside)'),
+                                onPressed: () => _reportFailures(
+                                    (onSyncError) => FirestoreFolderService()
+                                        .deleteFolder(keys[index],
+                                            onSyncError: onSyncError)),
+                                backgroundColor: Colors.redAccent)
+                        ],
                         child: Container(
                           height: 100,
                           width: 80,

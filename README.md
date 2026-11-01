@@ -6,6 +6,37 @@ A cada push e Pull Request, o GitHub Actions roda `flutter analyze` e `flutter t
 
 Link do pipeline: https://github.com/projetos-faculdade-org/notat/actions/workflows/flutter-ci.yml.
 
+## Investigação: notas que demoravam a sumir ao apagar uma pasta
+
+**Sintoma:** ao apagar as notas de uma pasta, elas continuavam na tela por um tempo e só depois sumiam.
+
+**Causa:** o `deleteDocsOfFolder` buscava as notas com `get()` antes de apagar. Essa leitura consulta o servidor primeiro, então nenhuma exclusão começava antes da resposta dele. Como a chamada não tinha `await`, a função ainda devolvia sucesso antes de qualquer nota ser apagada.
+
+**O que a investigação encontrou:**
+
+| Pergunta | Resposta |
+|---|---|
+| A tela atualiza antes ou depois da exclusão? | Depois. Ela só muda quando um listener do Firestore (`snapshots()`) recebe a alteração, e a exclusão só começava após a resposta do servidor. |
+| Há cache, listener ou lista em memória com estado antigo? | Não há lista em memória, e o listener refletia corretamente o que ainda não tinha sido apagado. |
+| A exclusão remota era aguardada? | Não. Nem a leitura nem os `delete()` tinham `await`, então o `try/catch` não capturava as falhas e a tela nunca recebia erro. |
+
+**Outros problemas no fluxo antigo:**
+- Cada nota era apagada em uma escrita separada, então elas podiam sumir aos poucos.
+- O `deleteFolder` esperava a confirmação do servidor antes de apagar as notas. Sem internet, essa espera não terminava.
+- O app não tinha a ação de esvaziar uma pasta mantendo a pasta. Ela foi criada como "Empty folder".
+
+**Correção:**
+- As notas são lidas do cache local (`Source.cache`), sem esperar o servidor.
+- As notas e a lista da pasta são apagadas juntas em um `WriteBatch`. O Firestore aplica a escrita localmente na hora e a tela atualiza pelo listener.
+- O fim da escrita não é aguardado, porque sem internet ele só acontece quando a conexão volta. A exclusão fica na fila local e sobrevive ao fechamento do app.
+- Se o servidor rejeitar a exclusão, o Firestore desfaz a escrita local, as notas voltam e o app mostra uma mensagem de erro, sem um falso estado de "vazia".
+
+**Limitações:**
+- Uma nota criada em outro aparelho que ainda não chegou ao cache local não é apagada.
+- Na Web a persistência offline está desligada, então uma exclusão pendente se perde ao recarregar a página.
+
+**Testes:** `test/empty_folder_test.dart` simula um servidor lento ou indisponível e falhava antes da correção. A causa foi identificada pela leitura do código e reproduzida nessa simulação. O comportamento offline, a reabertura do app e a rejeição real pelo servidor dependem do SDK do Firestore e precisam ser conferidos em um aparelho.
+
 
 # Getting Started
 This project is a starting point for a Flutter application.
