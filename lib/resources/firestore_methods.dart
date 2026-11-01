@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,9 +9,17 @@ import 'package:flutter_application_again/resources/firstore_folder_methods.dart
 import 'package:uuid/uuid.dart';
 
 class FirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final firestoreFolder = FirestoreFolderService();
-  final userUid = AuthService().useUid;
+  final FirebaseFirestore _firestore;
+  final String userUid;
+  final FirestoreFolderService firestoreFolder;
+
+  FirestoreService({FirebaseFirestore? firestore, String? userUid})
+      : this._(firestore ?? FirebaseFirestore.instance,
+            userUid ?? AuthService().useUid);
+
+  FirestoreService._(this._firestore, this.userUid)
+      : firestoreFolder =
+            FirestoreFolderService(firestore: _firestore, userUid: userUid);
 
   Future<String?> addDocument(
       {required String document,
@@ -90,17 +99,45 @@ class FirestoreService {
     }
   }
 
-  Future<String?> deleteDocsOfFolder(String folder) async {
-    var data =
-        _firestore.collection(userUid).where('folder', isEqualTo: folder);
+  /// Apaga as notas de [folder] e grava [folderValue] no campo da pasta.
+  ///
+  /// Le as notas do cache local para nao depender do servidor. A escrita em
+  /// lote vale localmente assim que e feita, entao os listeners atualizam a
+  /// tela na hora, e sem internet ela fica na fila ate a conexao voltar. Por
+  /// isso o Future do commit nao e aguardado: sem internet ele nao termina.
+  ///
+  /// Devolve uma mensagem se a exclusao nem comecou. Se o servidor rejeitar
+  /// depois, o Firestore desfaz a escrita local e [onSyncError] e chamado.
+  Future<String?> deleteDocsOfFolder(String folder,
+      {required Object folderValue,
+      void Function(String message)? onSyncError}) async {
+    const fallback = 'Could not delete the notes';
+    final user = _firestore.collection(userUid);
     try {
-      data.get().then((querySnapshot) {
-        querySnapshot.docs.forEach((element) {
-          element.reference.delete();
-        });
-      });
+      final notes = await user
+          .where('folder', isEqualTo: folder)
+          .get(const GetOptions(source: Source.cache));
+
+      final commits = <Future<void>>[];
+      var batch = _firestore.batch();
+      var operations = 0;
+      for (final note in notes.docs) {
+        batch.delete(note.reference);
+        if (++operations == 500) {
+          commits.add(batch.commit());
+          batch = _firestore.batch();
+          operations = 0;
+        }
+      }
+      batch.update(user.doc('folders'), {folder: folderValue});
+      commits.add(batch.commit());
+
+      unawaited(Future.wait(commits).then<void>((_) {}, onError: (Object e) {
+        onSyncError
+            ?.call(e is FirebaseException ? e.message ?? fallback : fallback);
+      }));
     } on FirebaseException catch (e) {
-      return e.message;
+      return e.message ?? fallback;
     }
     return null;
   }
