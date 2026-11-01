@@ -27,7 +27,8 @@ class VerifyEmail extends StatefulWidget {
   State<VerifyEmail> createState() => _VerifyEmailState();
 }
 
-class _VerifyEmailState extends State<VerifyEmail> {
+class _VerifyEmailState extends State<VerifyEmail>
+    with SingleTickerProviderStateMixin {
   late CustomTimerController _controller;
   bool isDismised = true;
   late Timer timer;
@@ -42,47 +43,47 @@ class _VerifyEmailState extends State<VerifyEmail> {
     await FirebaseAuth.instance.currentUser?.reload();
     final user = FirebaseAuth.instance.currentUser;
     if (user?.emailVerified ?? false) {
-      Navigator.of(context, rootNavigator: true)
-          .pushReplacementNamed('Home page')
-          .then((value) {
-        disposeScreen();
-      });
+      Navigator.of(context, rootNavigator: true).pushReplacementNamed('Home page');
     }
   }
 
   sendEmailVerification() async {
     if (AuthService().isVerified) {
       Navigator.of(context)
-          .pushReplacement(FadeTrans(translateTo: const HomePage()))
-          .then((value) {
-        disposeScreen();
-      });
+          .pushReplacement(FadeTrans(translateTo: const HomePage()));
     } else {
       FirebaseAuth.instance.currentUser!.sendEmailVerification();
     }
   }
 
-  void disposeScreen() {
-    if (!mounted) {
-      print('disposed ---------');
-      @override
-      void dispose() {
-        _controller.dispose();
-        timer.cancel();
-        super.dispose();
-      }
-    }
-  }
-
   @override
   void initState() {
-    _controller = CustomTimerController();
+    _controller = CustomTimerController(
+      vsync: this,
+      begin: const Duration(minutes: 2),
+      end: Duration.zero,
+      initialState: CustomTimerState.reset,
+      interval: CustomTimerInterval.milliseconds,
+    );
+    _controller.state.addListener(() {
+      if (!mounted) return;
+      if (_controller.state.value == CustomTimerState.finished && isDismised) {
+        changeButtonState();
+      }
+    });
     sendEmailVerification();
     _controller.start();
     timer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       checkVerification();
     });
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    timer.cancel();
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -151,20 +152,13 @@ class _VerifyEmailState extends State<VerifyEmail> {
               padding: EdgeInsets.only(top: 10, bottom: 20),
               child: CustomTimer(
                 controller: _controller,
-                begin: const Duration(minutes: 2),
-                end: const Duration(),
-                builder: (time) {
+                builder: (state, time) {
                   return Text(
                     '${time.minutes}:${time.seconds}',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.quicksand(
                         fontSize: 20, fontWeight: FontWeight.w500),
                   );
-                },
-                onChangeState: (state) {
-                  if (state == CustomTimerState.finished) {
-                    changeButtonState();
-                  }
                 },
               ),
             ),

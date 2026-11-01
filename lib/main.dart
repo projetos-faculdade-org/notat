@@ -4,11 +4,13 @@ import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_application_again/screens/authentication/login_screen.dart';
 import 'package:flutter_application_again/screens/authentication/signup_screen.dart';
 import 'package:flutter_application_again/screens/functionalities/home_page.dart';
 import 'package:flutter_application_again/screens/wrapper.dart';
 import 'package:flutter_application_again/utils/colors.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'firebase_options.dart';
@@ -31,7 +33,7 @@ Future<void> main() async {
   };
   runApp(ProviderScope(
       child: DevicePreview(
-          enabled: !kReleaseMode, builder: ((context) => MyApp()))));
+          enabled: !kReleaseMode, builder: ((context) => const MyApp()))));
 }
 
 class MyApp extends StatelessWidget {
@@ -41,8 +43,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       scaffoldMessengerKey: rootScaffoldMessengerKey,
-      useInheritedMediaQuery: true,
       locale: DevicePreview.locale(context),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        FlutterQuillLocalizations.delegate,
+      ],
       debugShowCheckedModeBanner: false,
       builder: DevicePreview.appBuilder,
       theme: CustomTheme.DarkTheme,

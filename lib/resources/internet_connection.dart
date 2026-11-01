@@ -4,11 +4,8 @@ class Connection {
   static Future<bool> checkInternet() async {
     final connection = await Connectivity().checkConnectivity();
 
-    if (connection == ConnectivityResult.mobile ||
-        connection == ConnectivityResult.wifi ||
-        connection == ConnectivityResult.ethernet) {
-      return true;
-    }
-    return false;
+    return connection.contains(ConnectivityResult.mobile) ||
+        connection.contains(ConnectivityResult.wifi) ||
+        connection.contains(ConnectivityResult.ethernet);
   }
 }
