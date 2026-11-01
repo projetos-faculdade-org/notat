@@ -10,7 +10,7 @@ class FolderMenu extends ConsumerWidget {
     required this.selected,
   });
 
-  ValueNotifier<String?> selected;
+  final ValueNotifier<String?> selected;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ref.watch(folderProvider).when(

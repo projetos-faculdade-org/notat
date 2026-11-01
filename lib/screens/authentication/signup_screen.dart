@@ -99,7 +99,6 @@ class _SignUpDetailsState extends State<SignUpDetails> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     return Form(
         key: _key,
         child: ListView(
