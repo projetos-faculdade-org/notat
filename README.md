@@ -67,7 +67,6 @@ samples, and guidance on mobile development
 <details>
 <summary>Expand</summary>
 
-
 firebase_messaging: ^12.0.1 
 
 uuid: ^3.0.6 
