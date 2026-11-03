@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter_application_again/main.dart';
 import 'package:flutter_application_again/resources/firestore_methods.dart';
 import 'package:flutter_application_again/screens/errorAndLoading/error_screen.dart';
 import 'package:flutter_application_again/screens/functionalities/edit_note.dart';
 import 'package:flutter_application_again/screens/errorAndLoading/empty_result.dart';
 import 'package:flutter_application_again/screens/errorAndLoading/loading_screen.dart';
 import 'package:flutter_application_again/widgets/reusedComponents/animation_transition.dart';
+import 'package:flutter_application_again/widgets/reusedComponents/snackbar.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -45,7 +47,8 @@ class _NoteCardsState extends State<NoteCards> {
                 var json = jsonDecode(myData['document']);
                 final controller = quill.QuillController(
                     document: quill.Document.fromJson(json),
-                    selection: const TextSelection.collapsed(offset: 0));
+                    selection: const TextSelection.collapsed(offset: 0),
+                    readOnly: true);
                 return FocusedMenuHolder(
                   menuWidth: 200,
                   menuOffset: 10,
@@ -81,7 +84,11 @@ class _NoteCardsState extends State<NoteCards> {
                         title: const Text('Delete'),
                         onPressed: () async {
                           await FirestoreService().deleteNote(
-                              uid: myData['uid'], folder: myData['folder']);
+                              uid: myData['uid'],
+                              folder: myData['folder'],
+                              onSyncError: (message) =>
+                                  CustomSnackBar.showGlobal(
+                                      rootScaffoldMessengerKey, message));
                         },
                         backgroundColor: Colors.redAccent)
                   ],
@@ -119,30 +126,29 @@ class _NoteCardsState extends State<NoteCards> {
                                       Colors.transparent
                                     ]).createShader(bounds);
                               }),
-                              child: quill.QuillEditor(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                autoFocus: true,
-                                enableInteractiveSelection: false,
-                                readOnly: true,
-                                showCursor: false,
-                                scrollPhysics:
-                                    const NeverScrollableScrollPhysics(),
-                                scrollable: true,
-                                expands: false,
-                                maxHeight: 150,
-                                scrollController:
-                                    ScrollController(keepScrollOffset: false),
-                                controller: controller,
-                                focusNode: FocusNode(),
+                              child: SizedBox(
+                                height: 150,
+                                child: quill.QuillEditor.basic(
+                                  controller: controller,
+                                  config: const quill.QuillEditorConfig(
+                                    padding: EdgeInsets.only(bottom: 10),
+                                    autoFocus: false,
+                                    enableInteractiveSelection: false,
+                                    enableSelectionToolbar: false,
+                                    showCursor: false,
+                                    scrollPhysics:
+                                        NeverScrollableScrollPhysics(),
+                                    maxHeight: 150,
+                                  ),
+                                ),
                               ),
                             ),
                             Row(
                               children: [
                                 Text(
-                                    Jiffy(DateTime.parse(
-                                            myData['date'].toDate().toString()))
-                                        .MMMd
-                                        .toString(),
+                                    Jiffy.parseFromDateTime(
+                                            myData['date'].toDate())
+                                        .format(pattern: 'MMM d'),
                                     style: GoogleFonts.roboto(
                                       fontSize: 12,
                                       color: const Color.fromARGB(

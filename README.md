@@ -6,35 +6,37 @@ A cada push e Pull Request, o GitHub Actions roda `flutter analyze` e `flutter t
 
 Link do pipeline: https://github.com/projetos-faculdade-org/notat/actions/workflows/flutter-ci.yml.
 
-### Validação do CI
+## Investigação: notas que demoravam a sumir ao apagar uma pasta
 
-O log de execução do workflow mostra as etapas `flutter analyze` e `flutter test` sendo executadas e passando.
+**Sintoma:** ao apagar as notas de uma pasta, elas continuavam na tela por um tempo e só depois sumiam.
 
-- **Lints:** o pacote `flutter_lints` está instalado em `dev_dependencies` e as regras recomendadas estão ativas no `analysis_options.yaml` (`include: package:flutter_lints/flutter.yaml`).
-- **Testes do comportamento do app** (pasta `test/`, 21 testes):
-  - `regex_test.dart`: regras de validação de email e de força da senha usadas no login, no cadastro e na recuperação de senha.
-  - `models_test.dart`: mapa que a nota (`Note`) gera para salvar no Firestore e o resultado da exclusão da conta (`DeletionResult`).
-  - `widget_test.dart`: comportamento do `CustomButton` (clique e estado desabilitado) e do `InputTextField` (campo de senha e mensagem de erro com email inválido).
-- **Ciclo vermelho → verde:** no PR #7, um teste foi alterado de propósito para falhar. O pipeline ficou vermelho ("20 tests passed, 1 failed"). Depois da correção, voltou a ficar verde.
+**Causa:** o `deleteDocsOfFolder` buscava as notas com `get()` antes de apagar. Essa leitura consulta o servidor primeiro, então nenhuma exclusão começava antes da resposta dele. Como a chamada não tinha `await`, a função ainda devolvia sucesso antes de qualquer nota ser apagada.
 
-## Proteção da branch main
+**O que a investigação encontrou:**
 
-Foi criada uma regra (ruleset) para a branch `main` em **Settings → Rules → Rulesets**, com as seguintes exigências:
+| Pergunta | Resposta |
+|---|---|
+| A tela atualiza antes ou depois da exclusão? | Depois. Ela só muda quando um listener do Firestore (`snapshots()`) recebe a alteração, e a exclusão só começava após a resposta do servidor. |
+| Há cache, listener ou lista em memória com estado antigo? | Não há lista em memória, e o listener refletia corretamente o que ainda não tinha sido apagado. |
+| A exclusão remota era aguardada? | Não. Nem a leitura nem os `delete()` tinham `await`, então o `try/catch` não capturava as falhas e a tela nunca recebia erro. |
 
-- Todo merge na `main` deve passar por Pull Request.
-- O Pull Request precisa de **pelo menos 1 aprovação** de outro integrante (regra do Sprint 2).
-- Aprovações antigas são descartadas quando novos commits são enviados.
-- O check **Analyze & Test** (workflow Flutter CI) precisa estar verde, com a branch atualizada.
-- Force push e exclusão da `main` são bloqueados.
-- Ninguém está na lista de bypass, nem administradores.
+**Outros problemas no fluxo antigo:**
+- Cada nota era apagada em uma escrita separada, então elas podiam sumir aos poucos.
+- O `deleteFolder` esperava a confirmação do servidor antes de apagar as notas. Sem internet, essa espera não terminava.
+- O app não tinha a ação de esvaziar uma pasta mantendo a pasta. Ela foi criada como "Empty folder".
 
-### Limitação do plano do GitHub
+**Correção:**
+- As notas são lidas do cache local (`Source.cache`), sem esperar o servidor.
+- As notas e a lista da pasta são apagadas juntas em um `WriteBatch`. O Firestore aplica a escrita localmente na hora e a tela atualiza pelo listener.
+- O fim da escrita não é aguardado, porque sem internet ele só acontece quando a conexão volta. A exclusão fica na fila local e sobrevive ao fechamento do app.
+- Se o servidor rejeitar a exclusão, o Firestore desfaz a escrita local, as notas voltam e o app mostra uma mensagem de erro, sem um falso estado de "vazia".
 
-O repositório é privado e a organização `projetos-faculdade-org` está no plano **GitHub Free**. Nesse plano, o GitHub **não aplica** rulesets nem proteções de branch em repositórios privados. A regra está configurada, mas o próprio GitHub exibe o aviso de que ela só será aplicada após o upgrade para **GitHub Team**.
+**Limitações:**
+- Uma nota criada em outro aparelho que ainda não chegou ao cache local não é apagada.
+- Na Web a persistência offline está desligada, então uma exclusão pendente se perde ao recarregar a página.
 
-Isso foi confirmado no PR #7: o botão de merge ficou disponível mesmo sem aprovação e com o CI vermelho.
+**Testes:** `test/empty_folder_test.dart` simula um servidor lento ou indisponível e falhava antes da correção. A causa foi identificada pela leitura do código e reproduzida nessa simulação. O comportamento offline, a reabertura do app e a rejeição real pelo servidor dependem do SDK do Firestore e precisam ser conferidos em um aparelho.
 
-Por isso, até que o repositório se torne público ou a organização seja atualizada, a regra é cumprida **por acordo da equipe**: ninguém faz merge na `main` sem pelo menos uma aprovação de um colega e sem o pipeline de CI verde. Assim que a limitação for removida, a regra passa a ser aplicada automaticamente, sem precisar de nova configuração.
 
 # Getting Started
 This project is a starting point for a Flutter application.
@@ -124,3 +126,30 @@ You can contribute by reporting bugs, suggesting improvements, and/or by helping
 [MIT](https://choosealicense.com/licenses/mit/)
 ## Acknowledgement
 Special thanks for these designers for inspiring me [1](https://dribbble.com/shots/11875872-A-simple-and-lightweight-note-app), [2](https://dribbble.com/shots/14995291--Notes-App-Dark-Mode)
+
+## Catálogo de code smells
+
+Cada smell foi corrigido com um teste de regressão escrito **antes** da mudança
+(commit `test(...)`), seguido do commit da refatoração/correção. Rode com `flutter test`.
+Os links do campo "Arquivo e trecho" apontam para o código **antes** da mudança
+(commit `6aa0399` da `main`), onde o trecho original pode ser conferido.
+
+### Smell 1 — Verificação "está online?" duplicada no feedback ao salvar
+
+| Campo | Descrição |
+|---|---|
+| **Arquivo e trecho** | [`create_note.dart` linhas 52-64](https://github.com/projetos-faculdade-org/notat/blob/6aa039931c3c4ff62e775508f8d3aee072d386b6/lib/screens/functionalities/create_note.dart#L52-L64) (callback do `CustomAppBar`, após `addDocument`) e [`edit_note.dart` linhas 69-81](https://github.com/projetos-faculdade-org/notat/blob/6aa039931c3c4ff62e775508f8d3aee072d386b6/lib/screens/functionalities/edit_note.dart#L69-L81) (após `updateDocument`). Os dois tinham o mesmo bloco: `if (value != null) feedback = value; else { hasInternet = await Connection.checkInternet(); feedback = hasInternet ? '...' : 'Nota salva localmente...'; }` |
+| **Smell** | Código duplicado (*Duplicated Code*): a regra de "está online?" e a mensagem de offline estavam copiadas nas duas telas; mudar uma exigia lembrar da outra. |
+| **Refatoração aplicada** | *Extract Function*: a regra foi para `saveFeedback()` em `lib/utils/save_feedback.dart`, com a verificação de internet injetável (`isOnline`, padrão `Connection.checkInternet`). As telas só passam o erro e a mensagem de sucesso. |
+| **Teste de regressão** | `test/save_feedback_test.dart`: erro do Firestore é mostrado e a internet nem é verificada; online mostra a mensagem de sucesso de cada tela; offline mostra "Nota salva localmente...". Passa antes e depois da refatoração. |
+| **Tipo** | Refatoração (comportamento idêntico). |
+
+### Smell 2 — Escrita no Firebase sem `await` dentro de `try/catch`: erro engolido
+
+| Campo | Descrição |
+|---|---|
+| **Arquivo e trecho** | `lib/resources/firstore_folder_methods.dart`: [`addDocToFolder` linhas 42-52](https://github.com/projetos-faculdade-org/notat/blob/6aa039931c3c4ff62e775508f8d3aee072d386b6/lib/resources/firstore_folder_methods.dart#L42-L52) e [`deleteDocFromFolder` linhas 76-86](https://github.com/projetos-faculdade-org/notat/blob/6aa039931c3c4ff62e775508f8d3aee072d386b6/lib/resources/firstore_folder_methods.dart#L76-L86). As duas faziam `_firestore...doc('folders').update({...})` sem `await` dentro de `try { } on FirebaseException catch`. |
+| **Smell** | Exceção engolida / operação assíncrona sem `await`: como o `Future` não era aguardado, o `catch` nunca era executado (código morto). A função sempre devolvia `null` (sucesso) e, se o servidor rejeitasse a escrita, a `FirebaseException` escapava como erro assíncrono não tratado, sem nenhum aviso ao usuário. |
+| **Correção aplicada** | Não basta colocar `await`: sem internet o `Future` da escrita só termina quando a conexão volta, então a função travaria (mesma conclusão do Card 1 em `deleteDocsOfFolder`). A escrita continua sem ser aguardada, mas agora passa por `_syncInBackground`, que trata o erro e entrega a mensagem a um `onSyncError` opcional (ou `debugPrint`). `addDocument` e `deleteNote` repassam o `onSyncError`, e `create_note.dart` e `note_cards.dart` mostram a mensagem num snackbar. O `try/catch` morto foi removido. |
+| **Teste de regressão** | `test/firestore_folder_methods_test.dart`. **Caminho feliz** (Firestore fake: a nota entra e sai da pasta) e **sem internet** (escrita que nunca termina: a função não pode travar) passam antes e depois. **Servidor rejeita a escrita**: falhava antes (o erro escapava sem tratamento) e passa depois. Depois da correção foi acrescentado um teste que verifica que a mensagem chega em `onSyncError`. |
+| **Tipo** | Correção de bug. Por isso os testes de "servidor rejeita" não passam antes: eles provam o bug. O comportamento que já funcionava (sucesso e não travar offline) fica protegido pelos testes que passam antes e depois. |

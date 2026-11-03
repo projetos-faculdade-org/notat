@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_again/main.dart';
 import 'package:flutter_application_again/resources/firestore_methods.dart';
-import 'package:flutter_application_again/resources/internet_connection.dart';
+import 'package:flutter_application_again/utils/save_feedback.dart';
 import 'package:flutter_application_again/screens/errorAndLoading/error_screen.dart';
 import 'package:flutter_application_again/screens/errorAndLoading/loading_screen.dart';
 import 'package:flutter_application_again/widgets/notesRelated/custom_app_bar.dart';
@@ -67,15 +67,8 @@ class EditNoteState extends ConsumerState<EditNote> {
                             noteUid: widget.noteUid,
                             date: DateTime.now())
                         .then((value) async {
-                      final String feedback;
-                      if (value != null) {
-                        feedback = value;
-                      } else {
-                        final hasInternet = await Connection.checkInternet();
-                        feedback = hasInternet
-                            ? 'Nota atualizada'
-                            : 'Nota salva localmente. Será sincronizada quando a internet voltar.';
-                      }
+                      final feedback = await saveFeedback(
+                          error: value, successMessage: 'Nota atualizada');
                       Navigator.of(context).pop();
                       CustomSnackBar.showGlobal(
                           rootScaffoldMessengerKey, feedback);
@@ -90,33 +83,34 @@ class EditNoteState extends ConsumerState<EditNote> {
                     height: 5,
                   ),
                   Expanded(
-                    child: editor.QuillEditor(
-                        focusNode: FocusNode(),
-                        scrollable: true,
-                        autoFocus: false,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        scrollController: ScrollController(),
+                    child: editor.QuillEditor.basic(
+                      controller: _controller,
+                      config: const editor.QuillEditorConfig(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
                         expands: true,
-                        controller: _controller,
-                        readOnly: false),
+                      ),
+                    ),
                   ),
-                  editor.QuillToolbar.basic(
+                  editor.QuillSimpleToolbar(
                     controller: _controller,
-                    multiRowsDisplay: false,
-                    showIndent: true,
-                    dialogTheme: editor.QuillDialogTheme(
+                    config: const editor.QuillSimpleToolbarConfig(
+                      multiRowsDisplay: false,
+                      showIndent: true,
+                      dialogTheme: editor.QuillDialogTheme(
                         inputTextStyle: TextStyle(color: Colors.white),
-                        labelTextStyle: TextStyle(color: Colors.white)),
-                    showLink: true,
-                    showDirection: false,
-                    showBackgroundColorButton: false,
-                    showRedo: true,
-                    showSearchButton: true,
-                    showFontSize: false,
-                    showAlignmentButtons: true,
-                    showCodeBlock: true,
-                    showFontFamily: false,
-                    showInlineCode: false,
+                        labelTextStyle: TextStyle(color: Colors.white),
+                      ),
+                      showLink: true,
+                      showDirection: false,
+                      showBackgroundColorButton: false,
+                      showRedo: true,
+                      showSearchButton: true,
+                      showFontSize: false,
+                      showAlignmentButtons: true,
+                      showCodeBlock: true,
+                      showFontFamily: false,
+                      showInlineCode: false,
+                    ),
                   )
                 ],
               ),

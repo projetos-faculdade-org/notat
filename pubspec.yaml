@@ -8,55 +8,50 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.17.6 <3.0.0"
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.44.9"
 
 dependencies:
   flutter:
     sdk: flutter
-  firebase_storage: ^10.3.4
-  cloud_firestore: ^3.4.2
-  firebase_auth: ^3.6.1
-  firebase_core: ^1.20.0
+  flutter_localizations:
+    sdk: flutter
 
-  cupertino_icons: ^1.0.2
-  firebase_messaging: ^12.0.1
-  uuid: ^3.0.6
-  flutter_staggered_grid_view: ^0.6.2
+  firebase_storage: ^13.6.0
+  cloud_firestore: ^6.10.0
+  firebase_auth: ^6.7.0
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
+
+  cupertino_icons: ^1.0.9
+  uuid: ^4.6.0
+  flutter_staggered_grid_view: ^0.7.0
   auto_size_text: ^3.0.0
   tab_indicator_styler: ^2.0.0
-  # 5.x nao compila no Flutter 3.7 (RawEditorState nao implementa
-  # TextInputClient.performSelector/didChangeInputControl).
-  # Teto em 6.4.3 porque de la em diante o quill exige intl ^0.18,
-  # e o device_preview + flutter_localizations do Flutter 3.7 fixam intl 0.17.0.
-  flutter_quill: ">=6.0.0 <6.4.3"
-  loading_animation_widget: ^1.2.0+2
-  google_fonts: ^3.0.1
-  animated_text_kit: ^4.2.2
-  lottie: ^1.4.1
-  custom_timer: ^0.1.2
-  jiffy: ^5.0.0
+  flutter_quill: ^11.5.1
+  loading_animation_widget: ^1.3.0
+  google_fonts: ^8.2.1
+  animated_text_kit: ^4.3.0
+  lottie: ^3.5.1
+  custom_timer: ^0.2.3
+  jiffy: ^6.4.5
   focused_menu: ^1.0.5
-  flutter_riverpod: ^1.0.4
-  connectivity_plus: ^2.3.9
-  device_preview: ^1.1.0
+  flutter_riverpod: ^3.4.3
+  connectivity_plus: ^7.3.1
+  device_preview: ^1.3.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.9.2
-  flutter_native_splash: ^2.0.1+1
-  flutter_lints: ^2.0.0
-
-# Forca todos os pacotes a usar a mesma versao do intl que o
-# flutter_localizations da SDK atual do Flutter ja exige (0.20.2).
-# Isso ignora os limites declarados por jiffy/device_preview/quill,
-# mas evita o conflito de versionamento no pub get.
-
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.8
+  flutter_lints: ^6.0.0
+  fake_cloud_firestore: ^4.4.0
 flutter_native_splash:
   color: "#1f1d2b"
   image: "assets/splashScreen.png"
 
-flutter_icons:
+flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/logo.png"
