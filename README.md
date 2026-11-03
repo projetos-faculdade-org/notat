@@ -132,12 +132,14 @@ Special thanks for these designers for inspiring me [1](https://dribbble.com/sho
 
 Cada smell foi corrigido com um teste de regressão escrito **antes** da mudança
 (commit `test(...)`), seguido do commit da refatoração/correção. Rode com `flutter test`.
+Os links do campo "Arquivo e trecho" apontam para o código **antes** da mudança
+(commit `6aa0399` da `main`), onde o trecho original pode ser conferido.
 
 ### Smell 1 — Verificação "está online?" duplicada no feedback ao salvar
 
 | Campo | Descrição |
 |---|---|
-| **Arquivo e trecho** | `lib/screens/functionalities/create_note.dart` (callback do `CustomAppBar`, após `addDocument`) e `lib/screens/functionalities/edit_note.dart` (após `updateDocument`). Os dois tinham o mesmo bloco: `if (value != null) feedback = value; else { hasInternet = await Connection.checkInternet(); feedback = hasInternet ? '...' : 'Nota salva localmente...'; }` |
+| **Arquivo e trecho** | [`create_note.dart` linhas 52-64](https://github.com/projetos-faculdade-org/notat/blob/6aa039931c3c4ff62e775508f8d3aee072d386b6/lib/screens/functionalities/create_note.dart#L52-L64) (callback do `CustomAppBar`, após `addDocument`) e [`edit_note.dart` linhas 69-81](https://github.com/projetos-faculdade-org/notat/blob/6aa039931c3c4ff62e775508f8d3aee072d386b6/lib/screens/functionalities/edit_note.dart#L69-L81) (após `updateDocument`). Os dois tinham o mesmo bloco: `if (value != null) feedback = value; else { hasInternet = await Connection.checkInternet(); feedback = hasInternet ? '...' : 'Nota salva localmente...'; }` |
 | **Smell** | Código duplicado (*Duplicated Code*): a regra de "está online?" e a mensagem de offline estavam copiadas nas duas telas; mudar uma exigia lembrar da outra. |
 | **Refatoração aplicada** | *Extract Function*: a regra foi para `saveFeedback()` em `lib/utils/save_feedback.dart`, com a verificação de internet injetável (`isOnline`, padrão `Connection.checkInternet`). As telas só passam o erro e a mensagem de sucesso. |
 | **Teste de regressão** | `test/save_feedback_test.dart`: erro do Firestore é mostrado e a internet nem é verificada; online mostra a mensagem de sucesso de cada tela; offline mostra "Nota salva localmente...". Passa antes e depois da refatoração. |
