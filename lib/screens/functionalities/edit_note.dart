@@ -60,12 +60,14 @@ class EditNoteState extends ConsumerState<EditNote> {
                     await FirestoreService()
                         .updateDocument(
                             previousFolder: previousFolder,
-                            folder: selected.value,
+                            folder: selected.value ?? previousFolder,
                             searchableDocument: plainText,
                             document: json,
                             title: _titleController.text,
                             noteUid: widget.noteUid,
-                            date: DateTime.now())
+                            date: DateTime.now(),
+                            onSyncError: (message) => CustomSnackBar.showGlobal(
+                                rootScaffoldMessengerKey, message))
                         .then((value) async {
                       final feedback = await saveFeedback(
                           error: value, successMessage: 'Nota atualizada');

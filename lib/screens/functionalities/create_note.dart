@@ -7,6 +7,7 @@ import 'package:flutter_application_again/widgets/notesRelated/custom_app_bar.da
 import 'package:flutter_application_again/widgets/notesRelated/note_header.dart';
 import 'package:flutter_application_again/widgets/reusedComponents/snackbar.dart';
 import 'package:flutter_quill/flutter_quill.dart' as editor;
+import 'package:uuid/uuid.dart';
 
 class CreateNote extends StatefulWidget {
   const CreateNote({super.key});
@@ -19,6 +20,10 @@ class _CreateNoteState extends State<CreateNote> {
   final editor.QuillController _controller = editor.QuillController.basic();
   final TextEditingController _titleController = TextEditingController();
   ValueNotifier<String> selected = ValueNotifier('All');
+
+  /// Id da nota, gerado uma vez por tela. Salvar de novo reaproveita o mesmo
+  /// id, entao a nota e regravada em vez de duplicada.
+  final String _noteUid = const Uuid().v4();
 
   @override
   void dispose() {
@@ -44,6 +49,7 @@ class _CreateNoteState extends State<CreateNote> {
                     jsonEncode(_controller.document.toPlainText());
                 await FirestoreService()
                     .addDocument(
+                        uid: _noteUid,
                         document: json,
                         searchableDocument: plainText,
                         title: _titleController.text,
@@ -55,8 +61,7 @@ class _CreateNoteState extends State<CreateNote> {
                   final feedback = await saveFeedback(
                       error: value, successMessage: 'Nota salva');
                   Navigator.pop(context);
-                  CustomSnackBar.showGlobal(
-                      rootScaffoldMessengerKey, feedback);
+                  CustomSnackBar.showGlobal(rootScaffoldMessengerKey, feedback);
                 });
               }),
               NoteHeader(

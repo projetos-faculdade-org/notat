@@ -154,6 +154,21 @@ class _NoteCardsState extends State<NoteCards> {
                                       color: const Color.fromARGB(
                                           90, 255, 255, 255),
                                     )),
+                                // Escrita ainda na fila local, sem
+                                // confirmacao do servidor.
+                                if (myData.metadata.hasPendingWrites)
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 6),
+                                    child: Tooltip(
+                                      message: 'Aguardando sincronização',
+                                      child: Icon(
+                                        Icons.cloud_upload_outlined,
+                                        size: 14,
+                                        color:
+                                            Color.fromARGB(90, 255, 255, 255),
+                                      ),
+                                    ),
+                                  ),
                                 const Expanded(child: SizedBox()),
                                 SizedBox(
                                   width: 85,
