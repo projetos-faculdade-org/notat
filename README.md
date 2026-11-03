@@ -153,3 +153,13 @@ Os links do campo "Arquivo e trecho" apontam para o código **antes** da mudanç
 | **Correção aplicada** | Não basta colocar `await`: sem internet o `Future` da escrita só termina quando a conexão volta, então a função travaria (mesma conclusão do Card 1 em `deleteDocsOfFolder`). A escrita continua sem ser aguardada, mas agora passa por `_syncInBackground`, que trata o erro e entrega a mensagem a um `onSyncError` opcional (ou `debugPrint`). `addDocument` e `deleteNote` repassam o `onSyncError`, e `create_note.dart` e `note_cards.dart` mostram a mensagem num snackbar. O `try/catch` morto foi removido. |
 | **Teste de regressão** | `test/firestore_folder_methods_test.dart`. **Caminho feliz** (Firestore fake: a nota entra e sai da pasta) e **sem internet** (escrita que nunca termina: a função não pode travar) passam antes e depois. **Servidor rejeita a escrita**: falhava antes (o erro escapava sem tratamento) e passa depois. Depois da correção foi acrescentado um teste que verifica que a mensagem chega em `onSyncError`. |
 | **Tipo** | Correção de bug. Por isso os testes de "servidor rejeita" não passam antes: eles provam o bug. O comportamento que já funcionava (sucesso e não travar offline) fica protegido pelos testes que passam antes e depois. |
+
+### Smell 3 — Regra de montagem da nota duplicada
+
+| Campo | Descrição |
+|---|---|
+| **Arquivo e trecho** | `lib/resources/firestore_methods.dart`: [`addDocument` linhas 22-29](https://github.com/projetos-faculdade-org/notat/blob/6aa039931c3c4ff62e775508f8d3aee072d386b6/lib/resources/firestore_methods.dart#L22-L29) e [`updateDocument` linhas 48-55](https://github.com/projetos-faculdade-org/notat/blob/6aa039931c3c4ff62e775508f8d3aee072d386b6/lib/resources/firestore_methods.dart#L48-L55). As duas montavam a `Note` repetindo `searchableDocument.toLowerCase().replaceAll('\\n', ' ')` e `title.isNotEmpty ? title : 'untitled'`. |
+| **Smell** | Código duplicado e regra de domínio no lugar errado (*Duplicated Code* / *Feature Envy*): a regra de como uma nota é normalizada pertence ao model `Note`, mas estava copiada no service. Mudar o título padrão ou a normalização da busca exigia lembrar dos dois métodos. |
+| **Refatoração aplicada** | *Extract Method* + *Move Method*: a regra virou a factory `Note.fromEditor(...)` em `lib/models/note.dart`, e `addDocument` e `updateDocument` passam a usá-la. |
+| **Teste de regressão** | `test/firestore_methods_note_test.dart` (Firestore fake): em `addDocument` e `updateDocument`, título vazio é salvo como `untitled`, título informado é mantido, e o texto buscável é salvo em minúsculas e sem `\n`. Passa antes e depois da refatoração. |
+| **Tipo** | Refatoração (comportamento idêntico). |

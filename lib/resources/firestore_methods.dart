@@ -29,14 +29,13 @@ class FirestoreService {
       required DateTime date,
       void Function(String message)? onSyncError}) async {
     final String uid = const Uuid().v4();
-    final Note note = Note(
+    final Note note = Note.fromEditor(
         folder: folder,
         document: document,
-        searchableDocument:
-            searchableDocument.toLowerCase().replaceAll('\\n', ' '),
+        searchableDocument: searchableDocument,
         date: date,
         uid: uid,
-        title: title.isNotEmpty ? title : 'untitled');
+        title: title);
 
     try {
       await _firestore.collection(userUid).doc(uid).set(note.toJson());
@@ -56,14 +55,13 @@ class FirestoreService {
       required folder,
       required String noteUid,
       required DateTime date}) async {
-    final Note note = Note(
+    final Note note = Note.fromEditor(
         folder: folder,
-        searchableDocument:
-            searchableDocument.toLowerCase().replaceAll('\\n', ' '),
+        searchableDocument: searchableDocument,
         document: document,
         date: date,
         uid: noteUid,
-        title: title.isNotEmpty ? title : 'untitled');
+        title: title);
 
     try {
       await _firestore.collection(userUid).doc(noteUid).set(note.toJson());
