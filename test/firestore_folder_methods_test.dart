@@ -142,5 +142,16 @@ void main() {
       await service.deleteDocFromFolder(folderField: 'Work', noteUid: 'n1');
       await settle();
     });
+
+    test('a mensagem do servidor chega em onSyncError', () async {
+      final messages = <String>[];
+      await service.addDocToFolder(
+          folderField: 'Work', noteUid: 'n1', onSyncError: messages.add);
+      await service.deleteDocFromFolder(
+          folderField: 'Work', noteUid: 'n1', onSyncError: messages.add);
+      await settle();
+
+      expect(messages, ['permission-denied', 'permission-denied']);
+    });
   });
 }

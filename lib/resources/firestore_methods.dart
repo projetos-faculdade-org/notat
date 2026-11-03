@@ -26,7 +26,8 @@ class FirestoreService {
       required String title,
       required String searchableDocument,
       String folder = 'All',
-      required DateTime date}) async {
+      required DateTime date,
+      void Function(String message)? onSyncError}) async {
     final String uid = const Uuid().v4();
     final Note note = Note(
         folder: folder,
@@ -39,7 +40,8 @@ class FirestoreService {
 
     try {
       await _firestore.collection(userUid).doc(uid).set(note.toJson());
-      await firestoreFolder.addDocToFolder(folderField: folder, noteUid: uid);
+      await firestoreFolder.addDocToFolder(
+          folderField: folder, noteUid: uid, onSyncError: onSyncError);
     } on FirebaseException catch (e) {
       return e.message!;
     }
@@ -143,11 +145,13 @@ class FirestoreService {
   }
 
   Future<String?> deleteNote(
-      {required String uid, required String folder}) async {
+      {required String uid,
+      required String folder,
+      void Function(String message)? onSyncError}) async {
     try {
       await _firestore.collection(userUid).doc(uid).delete();
       await firestoreFolder.deleteDocFromFolder(
-          folderField: folder, noteUid: uid);
+          folderField: folder, noteUid: uid, onSyncError: onSyncError);
     } on FirebaseException catch (e) {
       return e.message;
     }

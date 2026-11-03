@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_application_again/resources/auth_methods.dart';
 import 'package:flutter_application_again/resources/firestore_methods.dart';
 
@@ -52,14 +55,14 @@ class FirestoreFolderService {
   }
 
   Future<String?> addDocToFolder(
-      {required String folderField, required String noteUid}) async {
-    try {
-      _firestore.collection(userUid).doc('folders').update({
-        folderField: FieldValue.arrayUnion([noteUid])
-      });
-    } on FirebaseException catch (e) {
-      return e.message;
-    }
+      {required String folderField,
+      required String noteUid,
+      void Function(String message)? onSyncError}) async {
+    _syncInBackground(
+        _firestore.collection(userUid).doc('folders').update({
+          folderField: FieldValue.arrayUnion([noteUid])
+        }),
+        onSyncError);
     return null;
   }
 
@@ -86,15 +89,31 @@ class FirestoreFolderService {
   }
 
   Future<String?> deleteDocFromFolder(
-      {required String folderField, required String noteUid}) async {
-    try {
-      _firestore.collection(userUid).doc('folders').update({
-        folderField: FieldValue.arrayRemove([noteUid])
-      });
-    } on FirebaseException catch (e) {
-      return e.message;
-    }
+      {required String folderField,
+      required String noteUid,
+      void Function(String message)? onSyncError}) async {
+    _syncInBackground(
+        _firestore.collection(userUid).doc('folders').update({
+          folderField: FieldValue.arrayRemove([noteUid])
+        }),
+        onSyncError);
     return null;
+  }
+
+  /// Nao aguarda a escrita: sem internet o Future so termina quando a conexao
+  /// volta (ver [FirestoreService.deleteDocsOfFolder]). Se o servidor rejeitar,
+  /// a mensagem vai para [onSyncError] em vez de ser engolida.
+  void _syncInBackground(
+      Future<void> write, void Function(String message)? onSyncError) {
+    const fallback = 'Could not update the folder';
+    unawaited(write.then<void>((_) {}, onError: (Object e) {
+      final message = e is FirebaseException ? e.message ?? fallback : fallback;
+      if (onSyncError != null) {
+        onSyncError(message);
+      } else {
+        debugPrint(message);
+      }
+    }));
   }
 
   Future<String?> clearFolders() async {

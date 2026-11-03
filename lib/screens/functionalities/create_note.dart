@@ -48,7 +48,9 @@ class _CreateNoteState extends State<CreateNote> {
                         searchableDocument: plainText,
                         title: _titleController.text,
                         folder: selected.value,
-                        date: DateTime.now())
+                        date: DateTime.now(),
+                        onSyncError: (message) => CustomSnackBar.showGlobal(
+                            rootScaffoldMessengerKey, message))
                     .then((value) async {
                   final feedback = await saveFeedback(
                       error: value, successMessage: 'Nota salva');
