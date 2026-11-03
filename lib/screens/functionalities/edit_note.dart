@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_again/main.dart';
 import 'package:flutter_application_again/resources/firestore_methods.dart';
-import 'package:flutter_application_again/resources/internet_connection.dart';
+import 'package:flutter_application_again/utils/save_feedback.dart';
 import 'package:flutter_application_again/screens/errorAndLoading/error_screen.dart';
 import 'package:flutter_application_again/screens/errorAndLoading/loading_screen.dart';
 import 'package:flutter_application_again/widgets/notesRelated/custom_app_bar.dart';
@@ -67,15 +67,8 @@ class EditNoteState extends ConsumerState<EditNote> {
                             noteUid: widget.noteUid,
                             date: DateTime.now())
                         .then((value) async {
-                      final String feedback;
-                      if (value != null) {
-                        feedback = value;
-                      } else {
-                        final hasInternet = await Connection.checkInternet();
-                        feedback = hasInternet
-                            ? 'Nota atualizada'
-                            : 'Nota salva localmente. Será sincronizada quando a internet voltar.';
-                      }
+                      final feedback = await saveFeedback(
+                          error: value, successMessage: 'Nota atualizada');
                       Navigator.of(context).pop();
                       CustomSnackBar.showGlobal(
                           rootScaffoldMessengerKey, feedback);
