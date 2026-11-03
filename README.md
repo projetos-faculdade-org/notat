@@ -38,6 +38,40 @@ Link do pipeline: https://github.com/projetos-faculdade-org/notat/actions/workfl
 **Testes:** `test/empty_folder_test.dart` simula um servidor lento ou indisponível e falhava antes da correção. A causa foi identificada pela leitura do código e reproduzida nessa simulação. O comportamento offline, a reabertura do app e a rejeição real pelo servidor dependem do SDK do Firestore e precisam ser conferidos em um aparelho.
 
 
+## Sincronização das notas escritas offline
+
+**Requisito:** a nota escrita sem internet deve chegar ao servidor uma única vez quando a conexão voltar, sem perder conteúdo e sem duplicar.
+
+**O que a verificação encontrou:**
+
+| Pergunta | Antes | Agora |
+|---|---|---|
+| A nota entra numa fila de pendências? | Sim, na fila local do Firestore (`persistenceEnabled: true`), que fica gravada no aparelho. Mas `addDocument` e `updateDocument` faziam `await set()`, e esse `Future` só termina quando o servidor confirma. Sem internet, a tela de criar/editar ficava travada esperando. | A escrita não é aguardada (`syncInBackground`): a nota aparece na lista na hora, fica na fila e a tela fecha. |
+| O envio é repetido em caso de falha? | Sim, o SDK do Firestore reenvia a fila sozinho quando a conexão volta, inclusive depois de fechar e abrir o app. | Igual. Se o servidor **recusar** a escrita (ex.: `permission-denied`), não há reenvio: o SDK desfaz a mudança local e a mensagem aparece num snackbar (`onSyncError`). |
+| Existe um identificador que impede duplicar? | Em parte. O id do documento era um UUID, mas gerado **dentro** de `addDocument`, a cada chamada. Com a tela travada offline, tocar em salvar de novo criava outra nota. | O id é gerado uma vez por tela (`CreateNote._noteUid`) e passado para `addDocument(uid: ...)`. Repetir o envio regrava o mesmo documento (`set`), e o `arrayUnion` não repete o id na pasta. |
+| O usuário vê que a nota está pendente? | Não. | O card mostra um ícone de nuvem enquanto `metadata.hasPendingWrites` for verdadeiro. As listas usam `snapshots(includeMetadataChanges: true)` para o ícone sumir quando o servidor confirma. |
+
+Ao editar, a troca de pasta agora é **uma** escrita (`arrayRemove` da pasta antiga e `arrayUnion` da nova no mesmo `update`), então a nota não fica fora de todas as pastas se só uma das duas escritas chegar.
+
+**Testes:** `test/offline_note_sync_test.dart` simula a fila do Firestore com um "servidor" separado, para contar quantos envios foram feitos e quantas notas chegaram:
+- sem internet, salvar não trava, a nota aparece na lista e fica pendente;
+- quando a conexão volta, a nota chega ao servidor uma única vez;
+- o conteúdo (acentos, emoji, quebras de linha, formatação, cerca de 46 mil caracteres) chega idêntico;
+- o envio falha no meio (o servidor grava, mas a confirmação se perde) e é repetido: continua uma nota só, e a pasta lista o id uma vez;
+- salvar a mesma nota duas vezes não cria outra;
+- editar offline não trava e a troca de pasta não duplica.
+
+Os testes foram escritos antes da correção (commit `test(...)`). No código antigo todos falhavam porque salvar ficava esperando o servidor (conferido removendo o parâmetro `uid`, que o código antigo não tinha).
+
+**Conferir no aparelho** (a persistência da fila depende do SDK nativo e não roda em teste unitário):
+1. Ligar o modo avião, criar uma nota com texto e salvar: a tela fecha, a nota aparece na lista com o ícone de nuvem.
+2. Fechar o app pelo gerenciador de tarefas e abrir de novo, ainda em modo avião: a nota continua na lista e com o ícone.
+3. Desligar o modo avião: o ícone some. No console do Firebase existe um único documento com o id da nota e o texto completo.
+
+**Limitações:**
+- Na Web a persistência offline está desligada: a nota pendente se perde ao recarregar a página.
+- Se o servidor recusar a nota, ela some da lista (o SDK desfaz a escrita) e só fica a mensagem de erro.
+
 # Getting Started
 This project is a starting point for a Flutter application.
 A few resources to get you started if this is your first Flutter project:
@@ -60,8 +94,7 @@ samples, and guidance on mobile development
 ## Planned features 🌱
 * data encryption
 * locking notes
-* creating and editing notes offline[1]
-##### [1] due to a bug caused by firebase firestore, users are only able to create and edit notes online, [for more info](https://community.flutterflow.io/c/discuss-and-get-help/navigate-action-not-working-if-device-offline)
+* creating and editing notes offline (synced once the connection is back)
 
 ## Used Packages List:
 <details>
