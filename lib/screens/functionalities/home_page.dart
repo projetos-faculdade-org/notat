@@ -6,10 +6,10 @@ import 'package:flutter_application_again/screens/functionalities/create_note.da
 import 'package:flutter_application_again/widgets/delete_account_dialog.dart';
 import 'package:flutter_application_again/widgets/reusedComponents/animation_transition.dart';
 import 'package:flutter_application_again/widgets/foldersRelated/folders._tab.dart';
+import 'package:flutter_application_again/widgets/notesRelated/home_tab_bar.dart';
 import 'package:flutter_application_again/widgets/notesRelated/notes_tab.dart';
 import 'package:flutter_application_again/widgets/reusedComponents/snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:tab_indicator_styler/tab_indicator_styler.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -115,37 +115,7 @@ class _HomePageState extends State<HomePage>
               const SizedBox(
                 height: 50,
               ),
-              TabBar(
-                //isScrollable: true,
-                //labelColor: Colors.white,
-
-                unselectedLabelColor: Colors.white54,
-                controller: _tabController,
-                splashFactory: NoSplash.splashFactory,
-
-                tabs: [
-                  Tab(
-                    child: Text(
-                      'All',
-                      style: GoogleFonts.roboto(
-                          letterSpacing: 1,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w400),
-                    ),
-                  ),
-                  Tab(
-                      child: Text('Folder',
-                          style: GoogleFonts.roboto(
-                              letterSpacing: 1,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w500)))
-                ],
-                indicator: MaterialIndicator(
-                    color: Theme.of(context).tabBarTheme.labelColor!,
-                    topLeftRadius: 2,
-                    topRightRadius: 2,
-                    horizontalPadding: 75),
-              ),
+              HomeTabBar(controller: _tabController),
               const SizedBox(
                 height: 25,
               ),
