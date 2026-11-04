@@ -6,7 +6,7 @@ import 'package:flutter_application_again/models/deletion_result.dart';
 import 'package:flutter_application_again/models/note.dart';
 import 'package:flutter_application_again/resources/auth_methods.dart';
 import 'package:flutter_application_again/resources/firstore_folder_methods.dart';
-import 'package:uuid/uuid.dart';
+import 'package:flutter_application_again/resources/sync_in_background.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore;
@@ -21,14 +21,25 @@ class FirestoreService {
       : firestoreFolder =
             FirestoreFolderService(firestore: _firestore, userUid: userUid);
 
+  /// Salva uma nota nova e a coloca em [folder].
+  ///
+  /// [uid] e o id do documento e vem de quem chama: a tela gera um por nota e
+  /// usa o mesmo em todas as tentativas de salvar. Assim, repetir o envio
+  /// (o SDK reenviando a fila ou o usuario salvando de novo) grava por cima da
+  /// mesma nota em vez de criar outra, e o `arrayUnion` nao repete o id na
+  /// pasta.
+  ///
+  /// As escritas nao sao aguardadas: a nota aparece na lista na hora e fica
+  /// pendente ate o servidor confirmar (ver [syncInBackground]). Se o servidor
+  /// recusar, a mensagem vai para [onSyncError].
   Future<String?> addDocument(
-      {required String document,
+      {required String uid,
+      required String document,
       required String title,
       required String searchableDocument,
       String folder = 'All',
       required DateTime date,
       void Function(String message)? onSyncError}) async {
-    final String uid = const Uuid().v4();
     final Note note = Note.fromEditor(
         folder: folder,
         document: document,
@@ -37,24 +48,25 @@ class FirestoreService {
         uid: uid,
         title: title);
 
-    try {
-      await _firestore.collection(userUid).doc(uid).set(note.toJson());
-      await firestoreFolder.addDocToFolder(
-          folderField: folder, noteUid: uid, onSyncError: onSyncError);
-    } on FirebaseException catch (e) {
-      return e.message!;
-    }
+    syncInBackground(_firestore.collection(userUid).doc(uid).set(note.toJson()),
+        fallback: 'Could not save the note', onSyncError: onSyncError);
+    await firestoreFolder.addDocToFolder(
+        folderField: folder, noteUid: uid, onSyncError: onSyncError);
     return null;
   }
 
+  /// Regrava a nota [noteUid] e, se a pasta mudou, move a nota de pasta.
+  /// Mesmas regras de [addDocument]: nada e aguardado e repetir o envio nao
+  /// duplica a nota.
   Future<String?> updateDocument(
       {required String document,
       required String searchableDocument,
       required String title,
       required String previousFolder,
-      required folder,
+      required String folder,
       required String noteUid,
-      required DateTime date}) async {
+      required DateTime date,
+      void Function(String message)? onSyncError}) async {
     final Note note = Note.fromEditor(
         folder: folder,
         searchableDocument: searchableDocument,
@@ -63,16 +75,15 @@ class FirestoreService {
         uid: noteUid,
         title: title);
 
-    try {
-      await _firestore.collection(userUid).doc(noteUid).set(note.toJson());
-      await firestoreFolder.updateFolder(
-          folderField: folder,
-          noteUid: noteUid,
-          previousFolder: previousFolder);
-    } on FirebaseException catch (e) {
-      return e.message!;
-    }
-
+    syncInBackground(
+        _firestore.collection(userUid).doc(noteUid).set(note.toJson()),
+        fallback: 'Could not save the note',
+        onSyncError: onSyncError);
+    await firestoreFolder.updateFolder(
+        folderField: folder,
+        noteUid: noteUid,
+        previousFolder: previousFolder,
+        onSyncError: onSyncError);
     return null;
   }
 
