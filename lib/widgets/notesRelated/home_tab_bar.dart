@@ -14,6 +14,12 @@ class HomeTabBar extends StatelessWidget {
       unselectedLabelColor: Colors.white54,
       controller: controller,
       splashFactory: NoSplash.splashFactory,
+      // Desde o Flutter 3.44 (Material 3) o padrao e o indicador ter a largura
+      // do texto, e o MaterialIndicator abaixo exige mais de 2 x 75 px: a
+      // pintura falhava e as abas sumiam. Volta ao indicador da largura da
+      // aba, como no Material 2, e tira a linha divisoria que o M3 adiciona.
+      indicatorSize: TabBarIndicatorSize.tab,
+      dividerColor: Colors.transparent,
       tabs: [
         Tab(
           child: Text(
