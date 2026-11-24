@@ -38,6 +38,16 @@ Link do pipeline: https://github.com/projetos-faculdade-org/notat/actions/workfl
 **Testes:** `test/empty_folder_test.dart` simula um servidor lento ou indisponível e falhava antes da correção. A causa foi identificada pela leitura do código e reproduzida nessa simulação. O comportamento offline, a reabertura do app e a rejeição real pelo servidor dependem do SDK do Firestore e precisam ser conferidos em um aparelho.
 
 
+## Investigação: nota offline que não sobe ou sobe duplicada
+
+**Sintoma:** nota escrita sem internet às vezes não aparecia em outro aparelho e às vezes aparecia duas vezes.
+
+**Causa:** `addDocument` fazia `await` na escrita, e esse `Future` só termina quando o servidor confirma. Sem internet a tela ficava parada depois do "Save". O usuário tocava de novo, e cada toque gerava um UUID novo, ou seja, uma nota nova na fila. Além disso, a nota e a lista da pasta subiam em escritas separadas.
+
+**Correção:** o id é gerado uma vez pela tela e reusado (o `set` vira upsert). A nota e a pasta vão no mesmo `WriteBatch`, que não é aguardado: a escrita vale no aparelho na hora e o SDK envia quando a conexão volta. O card mostra um ícone de nuvem até o servidor confirmar.
+
+**Testes:** `test/offline_sync_test.dart` (com `test/support/offline_firestore.dart`, que simula o aparelho offline e a fila de escritas). O caminho completo, as outras causas e o mapeamento de tudo o que não funciona estão em [`docs/MAPEAMENTO.md`](docs/MAPEAMENTO.md).
+
 # Getting Started
 This project is a starting point for a Flutter application.
 A few resources to get you started if this is your first Flutter project:
