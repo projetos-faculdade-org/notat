@@ -5,4 +5,4 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 final notesProvider = StreamProvider(((ref) => FirebaseFirestore.instance
     .collection(AuthService().useUid)
     .orderBy('date', descending: true)
-    .snapshots()));
+    .snapshots(includeMetadataChanges: true)));

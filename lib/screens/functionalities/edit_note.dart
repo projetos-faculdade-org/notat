@@ -26,6 +26,7 @@ class EditNoteState extends ConsumerState<EditNote> {
   late TextEditingController _titleController;
   late editor.QuillController _controller;
   bool showEditor = false;
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -53,6 +54,8 @@ class EditNoteState extends ConsumerState<EditNote> {
               child: Column(
                 children: [
                   CustomAppBar(onPressed: () async {
+                    if (_saving) return;
+                    _saving = true;
                     String json =
                         jsonEncode(_controller.document.toDelta().toJson());
                     String plainText =
@@ -60,12 +63,15 @@ class EditNoteState extends ConsumerState<EditNote> {
                     await FirestoreService()
                         .updateDocument(
                             previousFolder: previousFolder,
-                            folder: selected.value,
+                            folder: selected.value ?? previousFolder,
                             searchableDocument: plainText,
                             document: json,
                             title: _titleController.text,
                             noteUid: widget.noteUid,
-                            date: DateTime.now())
+                            date: DateTime.now(),
+                            onSyncError: (message) =>
+                                CustomSnackBar.showGlobal(
+                                    rootScaffoldMessengerKey, message))
                         .then((value) async {
                       final feedback = await saveFeedback(
                           error: value, successMessage: 'Nota atualizada');

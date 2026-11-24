@@ -7,6 +7,7 @@ import 'package:flutter_application_again/widgets/notesRelated/custom_app_bar.da
 import 'package:flutter_application_again/widgets/notesRelated/note_header.dart';
 import 'package:flutter_application_again/widgets/reusedComponents/snackbar.dart';
 import 'package:flutter_quill/flutter_quill.dart' as editor;
+import 'package:uuid/uuid.dart';
 
 class CreateNote extends StatefulWidget {
   const CreateNote({super.key});
@@ -19,6 +20,10 @@ class _CreateNoteState extends State<CreateNote> {
   final editor.QuillController _controller = editor.QuillController.basic();
   final TextEditingController _titleController = TextEditingController();
   ValueNotifier<String> selected = ValueNotifier('All');
+
+  /// Gerado uma vez por tela: salvar de novo grava a mesma nota.
+  final String _noteUid = const Uuid().v4();
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -38,12 +43,15 @@ class _CreateNoteState extends State<CreateNote> {
               child: Column(
             children: [
               CustomAppBar(onPressed: () async {
+                if (_saving) return;
+                _saving = true;
                 String json =
                     jsonEncode(_controller.document.toDelta().toJson());
                 String plainText =
                     jsonEncode(_controller.document.toPlainText());
                 await FirestoreService()
                     .addDocument(
+                        noteUid: _noteUid,
                         document: json,
                         searchableDocument: plainText,
                         title: _titleController.text,

@@ -31,7 +31,7 @@ class _InsideFolderState extends State<InsideFolder> {
     folderProvider = StreamProvider((ref) => FirebaseFirestore.instance
         .collection(FirestoreService().userUid)
         .where('folder', isEqualTo: widget.folder)
-        .snapshots());
+        .snapshots(includeMetadataChanges: true));
     super.initState();
   }
 

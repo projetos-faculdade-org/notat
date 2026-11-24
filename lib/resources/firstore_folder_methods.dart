@@ -66,28 +66,6 @@ class FirestoreFolderService {
     return null;
   }
 
-  Future<String?> updateFolder(
-      {required String folderField,
-      required String noteUid,
-      required String previousFolder}) async {
-    try {
-      //if the user is updating the folder, delete the note uid from the
-      // previous folder and add the note uid to the new folder, otherwise don't change anything
-      if (previousFolder != folderField) {
-        await _firestore.collection(userUid).doc('folders').update({
-          previousFolder: FieldValue.arrayRemove([noteUid])
-        });
-
-        await _firestore.collection(userUid).doc('folders').update({
-          folderField: FieldValue.arrayUnion([noteUid])
-        });
-      }
-    } on FirebaseException catch (e) {
-      return e.message;
-    }
-    return null;
-  }
-
   Future<String?> deleteDocFromFolder(
       {required String folderField,
       required String noteUid,
