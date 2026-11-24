@@ -2,12 +2,11 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_application_again/models/deletion_result.dart';
 import 'package:flutter_application_again/models/note.dart';
 import 'package:flutter_application_again/resources/auth_methods.dart';
 import 'package:flutter_application_again/resources/firstore_folder_methods.dart';
-import 'package:uuid/uuid.dart';
+import 'package:flutter_application_again/resources/sync_in_background.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore;
@@ -22,23 +21,25 @@ class FirestoreService {
       : firestoreFolder =
             FirestoreFolderService(firestore: _firestore, userUid: userUid);
 
-  /// Salva uma nota nova.
+  /// Salva uma nota nova e a coloca em [folder].
   ///
-  /// [noteUid] deve ser gerado uma vez pela tela e reusado se o usuario
-  /// salvar de novo: como a nota e gravada com `set` no documento desse id,
-  /// salvar duas vezes sobrescreve a mesma nota em vez de criar outra.
-  /// Sem [noteUid], um id novo e gerado.
+  /// [uid] e o id do documento e vem de quem chama: a tela gera um por nota e
+  /// usa o mesmo em todas as tentativas de salvar. Assim, repetir o envio
+  /// (o SDK reenviando a fila ou o usuario salvando de novo) grava por cima da
+  /// mesma nota em vez de criar outra, e o `arrayUnion` nao repete o id na
+  /// pasta.
   ///
-  /// Ver [_commitInBackground] para o comportamento sem internet.
+  /// As escritas nao sao aguardadas: a nota aparece na lista na hora e fica
+  /// pendente ate o servidor confirmar (ver [syncInBackground]). Se o servidor
+  /// recusar, a mensagem vai para [onSyncError].
   Future<String?> addDocument(
-      {required String document,
+      {required String uid,
+      required String document,
       required String title,
       required String searchableDocument,
       String folder = 'All',
       required DateTime date,
-      String? noteUid,
       void Function(String message)? onSyncError}) async {
-    final String uid = noteUid ?? const Uuid().v4();
     final Note note = Note.fromEditor(
         folder: folder,
         document: document,
@@ -47,21 +48,16 @@ class FirestoreService {
         uid: uid,
         title: title);
 
-    final user = _firestore.collection(userUid);
-    final batch = _firestore.batch()
-      ..set(user.doc(uid), note.toJson())
-      ..set(
-          user.doc('folders'),
-          {
-            folder: FieldValue.arrayUnion([uid])
-          },
-          SetOptions(merge: true));
-    return _commitInBackground(batch, 'Could not save the note', onSyncError);
+    syncInBackground(_firestore.collection(userUid).doc(uid).set(note.toJson()),
+        fallback: 'Could not save the note', onSyncError: onSyncError);
+    await firestoreFolder.addDocToFolder(
+        folderField: folder, noteUid: uid, onSyncError: onSyncError);
+    return null;
   }
 
-  /// Salva a edicao de uma nota e, se ela mudou de pasta, move o id entre
-  /// as listas das pastas no mesmo envio.
-  /// Ver [_commitInBackground] para o comportamento sem internet.
+  /// Regrava a nota [noteUid] e, se a pasta mudou, move a nota de pasta.
+  /// Mesmas regras de [addDocument]: nada e aguardado e repetir o envio nao
+  /// duplica a nota.
   Future<String?> updateDocument(
       {required String document,
       required String searchableDocument,
@@ -79,47 +75,15 @@ class FirestoreService {
         uid: noteUid,
         title: title);
 
-    final user = _firestore.collection(userUid);
-    final batch = _firestore.batch()..set(user.doc(noteUid), note.toJson());
-    if (previousFolder != folder) {
-      batch.set(
-          user.doc('folders'),
-          {
-            previousFolder: FieldValue.arrayRemove([noteUid]),
-            folder: FieldValue.arrayUnion([noteUid]),
-          },
-          SetOptions(merge: true));
-    }
-    return _commitInBackground(
-        batch, 'Could not update the note', onSyncError);
-  }
-
-  /// Envia [batch] sem esperar o servidor.
-  ///
-  /// O Firestore aplica a escrita no cache do aparelho assim que o commit e
-  /// chamado (a tela atualiza pelos listeners), guarda a escrita na fila
-  /// persistida e a envia sozinho quando a conexao volta. O Future do commit
-  /// so termina quando o servidor confirma, entao sem internet ele fica
-  /// pendente: aguarda-lo travava a tela e levava o usuario a salvar de novo.
-  ///
-  /// Nota e lista da pasta vao no mesmo batch para chegarem juntas (atomico)
-  /// ao servidor. Se o servidor rejeitar, o Firestore desfaz a escrita local
-  /// e a mensagem vai para [onSyncError].
-  String? _commitInBackground(WriteBatch batch, String fallback,
-      void Function(String message)? onSyncError) {
-    try {
-      unawaited(batch.commit().then<void>((_) {}, onError: (Object e) {
-        final message =
-            e is FirebaseException ? e.message ?? fallback : fallback;
-        if (onSyncError != null) {
-          onSyncError(message);
-        } else {
-          debugPrint(message);
-        }
-      }));
-    } on FirebaseException catch (e) {
-      return e.message ?? fallback;
-    }
+    syncInBackground(
+        _firestore.collection(userUid).doc(noteUid).set(note.toJson()),
+        fallback: 'Could not save the note',
+        onSyncError: onSyncError);
+    await firestoreFolder.updateFolder(
+        folderField: folder,
+        noteUid: noteUid,
+        previousFolder: previousFolder,
+        onSyncError: onSyncError);
     return null;
   }
 
@@ -189,23 +153,19 @@ class FirestoreService {
     return null;
   }
 
-  /// Apaga a nota e tira o id dela da lista da pasta, no mesmo envio.
-  /// Ver [_commitInBackground] para o comportamento sem internet.
+  /// Apaga a nota e tira o id dela da pasta, sem esperar o servidor:
+  /// sem internet o `delete()` so termina quando a conexao volta (ver
+  /// [syncInBackground]). Se o servidor recusar, a mensagem vai para
+  /// [onSyncError].
   Future<String?> deleteNote(
       {required String uid,
       required String folder,
       void Function(String message)? onSyncError}) async {
-    final user = _firestore.collection(userUid);
-    final batch = _firestore.batch()
-      ..delete(user.doc(uid))
-      ..set(
-          user.doc('folders'),
-          {
-            folder: FieldValue.arrayRemove([uid])
-          },
-          SetOptions(merge: true));
-    return _commitInBackground(
-        batch, 'Could not delete the note', onSyncError);
+    syncInBackground(_firestore.collection(userUid).doc(uid).delete(),
+        fallback: 'Could not delete the note', onSyncError: onSyncError);
+    await firestoreFolder.deleteDocFromFolder(
+        folderField: folder, noteUid: uid, onSyncError: onSyncError);
+    return null;
   }
 
   Future<int> countNotes() async {

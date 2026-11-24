@@ -21,8 +21,11 @@ class _CreateNoteState extends State<CreateNote> {
   final TextEditingController _titleController = TextEditingController();
   ValueNotifier<String> selected = ValueNotifier('All');
 
-  /// Gerado uma vez por tela: salvar de novo grava a mesma nota.
+  /// Id da nota, gerado uma vez por tela. Salvar de novo reaproveita o mesmo
+  /// id, entao a nota e regravada em vez de duplicada.
   final String _noteUid = const Uuid().v4();
+
+  /// Ignora novos toques em "Save" enquanto a nota esta sendo salva.
   bool _saving = false;
 
   @override
@@ -51,7 +54,7 @@ class _CreateNoteState extends State<CreateNote> {
                     jsonEncode(_controller.document.toPlainText());
                 await FirestoreService()
                     .addDocument(
-                        noteUid: _noteUid,
+                        uid: _noteUid,
                         document: json,
                         searchableDocument: plainText,
                         title: _titleController.text,
@@ -63,8 +66,7 @@ class _CreateNoteState extends State<CreateNote> {
                   final feedback = await saveFeedback(
                       error: value, successMessage: 'Nota salva');
                   Navigator.pop(context);
-                  CustomSnackBar.showGlobal(
-                      rootScaffoldMessengerKey, feedback);
+                  CustomSnackBar.showGlobal(rootScaffoldMessengerKey, feedback);
                 });
               }),
               NoteHeader(

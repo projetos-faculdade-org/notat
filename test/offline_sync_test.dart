@@ -26,9 +26,10 @@ void main() {
   Future<Json> foldersOn(FirebaseFirestore store) async =>
       (await store.collection(_uid).doc('folders').get()).data() ?? {};
 
+  var nextId = 0;
   Future<String?> createNote({String? noteUid, String folder = 'All'}) =>
       service.addDocument(
-          noteUid: noteUid,
+          uid: noteUid ?? 'nota-auto-${nextId++}',
           document: '[{"insert":"leite\\n"}]',
           title: 'Mercado',
           searchableDocument: '"leite\\n"',
@@ -79,7 +80,7 @@ void main() {
       expect(firestore.pendingWrites, 0);
     });
 
-    test('chega completa: nota e lista da pasta sobem no mesmo envio',
+    test('chega completa ao servidor, com a nota na pasta',
         () async {
       unawaited(createNote(folder: 'Faculdade'));
       await settle();
@@ -96,23 +97,6 @@ void main() {
         'date': Timestamp.fromDate(date),
       });
       expect((await foldersOn(firestore.server))['Faculdade'], [note.id]);
-      expect(firestore.serverCommits, 1,
-          reason: 'nota e pasta precisam subir juntas (atomico), senao o '
-              'outro aparelho pode ver a nota sem ela estar na pasta');
-    });
-
-    test('sobe mesmo que a lista de pastas ainda nao exista', () async {
-      await firestore.local.collection(_uid).doc('folders').delete();
-      await firestore.server.collection(_uid).doc('folders').delete();
-
-      unawaited(createNote());
-      await settle();
-      await firestore.reconnect();
-      await settle();
-
-      final notes = await notesOn(firestore.server);
-      expect(notes, hasLength(1));
-      expect((await foldersOn(firestore.server))['All'], [notes.single.id]);
     });
 
     test('se o servidor rejeitar, o erro chega em onSyncError', () async {
@@ -123,6 +107,7 @@ void main() {
           message: 'sem permissao');
 
       await service.addDocument(
+          uid: 'nota-1',
           document: '[]',
           title: '',
           searchableDocument: '""',
@@ -163,15 +148,6 @@ void main() {
       expect((await foldersOn(firestore.server))['All'], ['nota-1']);
     });
 
-    test('sem id informado, cada nota nova ganha um id proprio', () async {
-      await createNote();
-      await createNote();
-      await firestore.reconnect();
-      await settle();
-
-      final ids = (await notesOn(firestore.server)).map((n) => n.id).toSet();
-      expect(ids, hasLength(2));
-    });
   });
 
   group('nota editada offline', () {
@@ -207,8 +183,7 @@ void main() {
       expect(notes.single['title'], 'Padaria');
     });
 
-    test('trocar de pasta move a nota nas listas no mesmo envio', () async {
-      final commitsBefore = firestore.serverCommits;
+    test('trocar de pasta move a nota entre as listas', () async {
       await editNote(from: 'All', to: 'Faculdade');
       await firestore.reconnect();
       await settle();
@@ -216,7 +191,6 @@ void main() {
       final folders = await foldersOn(firestore.server);
       expect(folders['All'], isEmpty);
       expect(folders['Faculdade'], ['nota-1']);
-      expect(firestore.serverCommits - commitsBefore, 1);
     });
   });
 

@@ -28,7 +28,7 @@ void main() {
 
   Future<void> seedNote(String id, String folder) async {
     await notes.addDocument(
-        noteUid: id,
+        uid: id,
         document: '[]',
         title: id,
         searchableDocument: '""',
@@ -88,7 +88,7 @@ void main() {
       final offline = OfflineFirestore();
       final service = FirestoreService(firestore: offline, userUid: _uid);
       await service.addDocument(
-          noteUid: 'n1',
+          uid: 'n1',
           document: '[]',
           title: 'Offline',
           searchableDocument: '""',

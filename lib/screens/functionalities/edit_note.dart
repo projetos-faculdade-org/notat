@@ -26,6 +26,8 @@ class EditNoteState extends ConsumerState<EditNote> {
   late TextEditingController _titleController;
   late editor.QuillController _controller;
   bool showEditor = false;
+
+  /// Ignora novos toques em "Save" enquanto a nota esta sendo salva.
   bool _saving = false;
 
   @override
@@ -69,9 +71,8 @@ class EditNoteState extends ConsumerState<EditNote> {
                             title: _titleController.text,
                             noteUid: widget.noteUid,
                             date: DateTime.now(),
-                            onSyncError: (message) =>
-                                CustomSnackBar.showGlobal(
-                                    rootScaffoldMessengerKey, message))
+                            onSyncError: (message) => CustomSnackBar.showGlobal(
+                                rootScaffoldMessengerKey, message))
                         .then((value) async {
                       final feedback = await saveFeedback(
                           error: value, successMessage: 'Nota atualizada');

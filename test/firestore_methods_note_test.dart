@@ -32,6 +32,7 @@ void main() {
     test('sem titulo vira "untitled" e o texto buscavel e normalizado',
         () async {
       await service.addDocument(
+          uid: 'n1',
           document: '[]',
           title: '',
           searchableDocument: plainText,
@@ -46,6 +47,7 @@ void main() {
 
     test('mantem o titulo informado', () async {
       await service.addDocument(
+          uid: 'n1',
           document: '[]',
           title: 'Mercado',
           searchableDocument: plainText,

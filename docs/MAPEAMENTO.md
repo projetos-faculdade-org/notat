@@ -11,7 +11,8 @@ num aparelho. Isso está indicado em cada item.
 Tela (CreateNote / EditNote)
   └─ toque em "Save"
       └─ FirestoreService.addDocument / updateDocument   (lib/resources/firestore_methods.dart)
-          └─ WriteBatch: nota  +  lista da pasta (doc "folders")
+          ├─ set() da nota            ─┐  sem await (syncInBackground,
+          └─ update() da lista da pasta ┘  lib/resources/sync_in_background.dart)
               └─ SDK do Firestore
                   ├─ aplica no cache local na hora  ──► listeners (notesProvider) atualizam a tela
                   ├─ grava a escrita na fila persistida do aparelho
@@ -40,12 +41,13 @@ offline davam `TimeoutException` (a chamada não terminava).
 
 ### Causas de a nota não aparecer em outro aparelho
 
-1. **Nota e pasta subiam em escritas separadas.** A nota era gravada e só
-   depois de confirmada o id entrava na lista da pasta (`update` sem `await`).
-   O outro aparelho podia receber a nota sem ela estar na pasta. E, se o doc
-   `folders` não existisse, o `update` era rejeitado.
-   Corrigido: as duas escritas vão no mesmo `WriteBatch` e a pasta usa
-   `set(..., merge: true)`.
+1. **Nota e pasta sobem em escritas separadas (em parte corrigido).** Antes,
+   o id só entrava na lista da pasta depois de o servidor confirmar a nota.
+   Agora as duas escritas entram na fila juntas, e a troca de pasta ao editar
+   é um único `update`. Ainda são duas escritas, então o outro aparelho pode
+   ver a nota um instante antes de ela estar na pasta. E, se o doc `folders`
+   não existir, o `update` da pasta é rejeitado (a nota sobe, mas fora da
+   pasta). Ver bug 2.
 2. **A tela travada fazia o usuário sair achando que tinha falhado.** A
    escrita continuava na fila, mas o usuário não tinha como saber. Corrigido:
    a tela fecha na hora, e o card mostra o ícone até o servidor confirmar.
@@ -64,11 +66,15 @@ offline davam `TimeoutException` (a chamada não terminava).
 
 | O que | Onde |
 |---|---|
-| ID gerado uma vez por tela e reusado a cada "Save". Como a nota é gravada com `set` (upsert) nesse id, salvar de novo sobrescreve a mesma nota. | `create_note.dart` (`_noteUid`), `addDocument(noteUid:)` |
+A correção principal entrou na `main` pelo PR #13. Esta branch acrescentou a
+trava do "Save" e o `deleteNote` sem espera.
+
+| O que | Onde |
+|---|---|
+| ID gerado uma vez por tela e reusado a cada "Save". Como a nota é gravada com `set` (upsert) nesse id, salvar de novo sobrescreve a mesma nota; o `arrayUnion` não repete o id na pasta. | `create_note.dart` (`_noteUid`), `addDocument(uid:)` |
 | "Save" ignora novos toques enquanto salva | `create_note.dart`, `edit_note.dart` (`_saving`) |
-| Nota e lista da pasta no mesmo `WriteBatch` (chegam juntas) | `addDocument`, `updateDocument`, `deleteNote` |
-| Não espera o servidor: escrita local na hora, envio pela fila do SDK, erro do servidor vai para `onSyncError` (snackbar) | `_commitInBackground` |
-| Lista da pasta com `set(merge: true)` + `arrayUnion` (idempotente, funciona sem o doc `folders`) | idem |
+| Não espera o servidor: escrita local na hora, envio pela fila do SDK, erro do servidor vai para `onSyncError` (snackbar) | `syncInBackground` em `addDocument`, `updateDocument`, `deleteNote` |
+| Troca de pasta ao editar em um único `update` | `updateFolder` |
 | Nota só aparece como enviada depois da confirmação do servidor (ícone de nuvem até lá) | `note_cards.dart`, `note_provider.dart`, `notes_inside_folder.dart` |
 
 ## 2. Funcionalidades e estado
@@ -89,7 +95,7 @@ offline davam `TimeoutException` (a chamada não terminava).
 | Ver notas de uma pasta | `notes_inside_folder.dart` | Funciona | — |
 | Esvaziar pasta / apagar pasta | `folders._tab.dart`, `deleteDocsOfFolder` | Funciona (inclusive offline) | `empty_folder_test.dart` |
 | Limpar todas as notas | `home_page.dart`, `clearAllNotes` | Funciona online; com problemas (bug 3) | `sprint_features_test.dart` |
-| Excluir meus dados e a conta | `delete_account_dialog.dart`, `deleteAllUserData` | Funciona (exige internet, de propósito) | `sprint_features_test.dart` |
+| Excluir meus dados e a conta | `delete_account_dialog.dart`, `deleteAllUserData` | Funciona (exige internet, de propósito) | `sprint_features_test.dart`, `models_test.dart` |
 | Busca de notas | `searchableDocument` é salvo | **Não existe**: o campo é gravado, mas não há tela de busca | — |
 | Criptografia / travar notas | README "Planned features" | **Não existe** | — |
 | Mensagem ao salvar | `save_feedback.dart` | Funciona com ressalva (causa 5 acima) | `save_feedback_test.dart` |
@@ -102,7 +108,7 @@ teste. "Provável" = deduzido do código e ainda não conferido num aparelho.
 | # | Problema | Onde | Efeito | Situação |
 |---|---|---|---|---|
 | 1 | Salvar nota offline travava a tela e gerava nota duplicada | `addDocument` | Notas repetidas no servidor | **Corrigido** (seção 1) |
-| 2 | Nota e pasta subiam separadas; `update` falha se `folders` não existe | `addDocument`, `updateFolder` | Nota fora da pasta ou não aparece | **Corrigido** |
+| 2 | Nota e pasta sobem em escritas separadas; o `update` da pasta falha se `folders` não existe | `addDocument`, `addDocToFolder` | Nota fora da pasta | Em parte: a pasta não espera mais a nota. Falta juntar as duas num `WriteBatch` e usar `set(merge: true)` na pasta |
 | 3 | `clearAllNotes` não aguarda os `delete()`, lê com `get()` padrão (espera o servidor) e não pede confirmação | `firestore_methods.dart` | Offline, nada é apagado até a conexão voltar. Erros são ignorados. Um toque sem querer apaga tudo | Confirmado no código |
 | 4 | Providers globais (`notesProvider`, `folderProvider`) guardam o uid de quem entrou primeiro | `lib/providers/*.dart` | Ao trocar de conta sem fechar o app, a tela pode mostrar erro ou dados da conta anterior | Provável |
 | 5 | Nome de pasta com `.` em `update({name: []})` vira um caminho aninhado | `createFolder` | Pasta "a.b" é criada como `{a: {b: []}}` e aparece como "a" | Confirmado no código |
@@ -116,7 +122,6 @@ teste. "Provável" = deduzido do código e ainda não conferido num aparelho.
 | 13 | Web sem persistência offline | `main.dart` | Nota offline se perde ao recarregar | Confirmado no código (decisão anterior) |
 | 14 | Escritas pendentes ficam presas à conta | SDK do Firestore | Nota não sobe se o usuário sai antes de sincronizar | Provável |
 | 15 | README diz que não dá para criar e editar offline | `README.md` | Documentação desatualizada | Confirmado |
-| 16 | `addDocToFolder` ficou sem uso em `lib/` (só os testes do smell 2 usam) | `firstore_folder_methods.dart` | Código morto | Confirmado |
 
 ## 4. Backlog
 
@@ -125,10 +130,10 @@ teste. "Provável" = deduzido do código e ainda não conferido num aparelho.
 | Nota criada offline é enviada ao reconectar | **Pronto: já funcionava** (fila do SDK com persistência ligada). Era o único teste que já passava antes da correção. | `offline_sync_test.dart` → "e enviada ao reconectar" |
 | Salvar offline não trava a tela | Pronto | "salvar nao trava esperando o servidor", "fica no aparelho e ainda nao foi enviada" |
 | Envio repetido não gera duplicata (ID gerado no aparelho + upsert) | Pronto | grupo "envio repetido nao gera duplicata" |
-| Nota sincronizada aparece completa (nota + pasta no mesmo envio) | Pronto | "chega completa: nota e lista da pasta sobem no mesmo envio", "sobe mesmo que a lista de pastas ainda nao exista" |
+| Nota sincronizada aparece completa | Pronto | "chega completa ao servidor, com a nota na pasta"; `offline_note_sync_test.dart` → "o conteudo chega completo ao servidor" |
 | Marcar como enviada só após confirmação do servidor | Pronto (ícone de nuvem por `hasPendingWrites`) | "fica no aparelho e ainda nao foi enviada"; conferir o ícone em aparelho |
 | Erro do servidor ao sincronizar avisa o usuário | Pronto | "se o servidor rejeitar, o erro chega em onSyncError" |
 | Editar e apagar offline | Pronto | grupos "nota editada offline" e "nota apagada offline" |
-| Funcionalidades das sprints anteriores conferidas | Pronto | `sprint_features_test.dart`, `empty_folder_test.dart` e testes dos smells: 47 testes passando |
-| Bugs 3 a 16 | A fazer | seção 3 |
+| Funcionalidades das sprints anteriores conferidas | Pronto | `sprint_features_test.dart`, `empty_folder_test.dart` e os demais testes da `main` |
+| Bug 2 (juntar nota e pasta num envio só) e bugs 3 a 15 | A fazer | seção 3 |
 | Conferir em aparelho: modo avião → criar nota → voltar a conexão → nota aparece uma vez no outro aparelho | A fazer (manual) | — |
