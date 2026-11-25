@@ -25,6 +25,9 @@ class _CreateNoteState extends State<CreateNote> {
   /// id, entao a nota e regravada em vez de duplicada.
   final String _noteUid = const Uuid().v4();
 
+  /// Ignora novos toques em "Save" enquanto a nota esta sendo salva.
+  bool _saving = false;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -43,6 +46,8 @@ class _CreateNoteState extends State<CreateNote> {
               child: Column(
             children: [
               CustomAppBar(onPressed: () async {
+                if (_saving) return;
+                _saving = true;
                 String json =
                     jsonEncode(_controller.document.toDelta().toJson());
                 String plainText =

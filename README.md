@@ -312,6 +312,8 @@ Os testes foram escritos antes da correção (commit `test(...)`). No código an
 - Na Web a persistência offline está desligada: a nota pendente se perde ao recarregar a página.
 - Se o servidor recusar a nota, ela some da lista (o SDK desfaz a escrita) e só fica a mensagem de erro.
 
+**Complementos depois do #13:** o botão "Save" ignora novos toques enquanto salva, e apagar uma nota também não espera mais o servidor (`deleteNote`). O caminho completo da nota, as outras causas de ela não subir, o estado de cada funcionalidade e os bugs em aberto estão em [`docs/MAPEAMENTO.md`](docs/MAPEAMENTO.md).
+
 ### Correção não planejada: abas All/Folder invisíveis
 
 Entregue no PR [#14](https://github.com/projetos-faculdade-org/notat/pull/14) (refatoração `83dc7f9` → teste `b71b39f` → correção `cc1323a`). O item não estava no backlog planejado: o problema apareceu depois da migração para o Flutter 3.44.9 e impedia o usuário de achar a criação de pastas.
@@ -335,7 +337,9 @@ A pasta `test/` da `main` contém os arquivos abaixo.
 | `home_tab_bar_test.dart` | Renderização das abas em larguras de telefone e interação da aba Folder. | [#14](https://github.com/projetos-faculdade-org/notat/pull/14) |
 | `models_test.dart` | Serialização do modelo `Note` e resultados da exclusão de conta (`DeletionResult`). | [#7](https://github.com/projetos-faculdade-org/notat/pull/7) |
 | `offline_note_sync_test.dart` | US2: fila offline, envio/reenvio sem duplicata, preservação do conteúdo e edição offline. | [#13](https://github.com/projetos-faculdade-org/notat/pull/13) |
+| `offline_sync_test.dart` | US2, com o dublê `support/offline_firestore.dart`: criar, editar e apagar offline, reenvio sem duplicata e erro do servidor. | — |
 | `regex_test.dart` | Validação de e-mail e requisitos de força de senha. | [#7](https://github.com/projetos-faculdade-org/notat/pull/7) |
+| `sprint_features_test.dart` | Funcionalidades das sprints anteriores: pastas, abrir nota (inclusive criada offline), limpar todas as notas e excluir meus dados. | — |
 | `save_feedback_test.dart` | Smell 1: feedback de erro, salvamento online e salvamento local offline. | [#8](https://github.com/projetos-faculdade-org/notat/pull/8) |
 | `widget_test.dart` | Ação e estado desabilitado de `CustomButton`; visibilidade de senha e validação de e-mail em `InputTextField`. | [#7](https://github.com/projetos-faculdade-org/notat/pull/7) |
 

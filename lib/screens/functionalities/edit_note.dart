@@ -27,6 +27,9 @@ class EditNoteState extends ConsumerState<EditNote> {
   late editor.QuillController _controller;
   bool showEditor = false;
 
+  /// Ignora novos toques em "Save" enquanto a nota esta sendo salva.
+  bool _saving = false;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -53,6 +56,8 @@ class EditNoteState extends ConsumerState<EditNote> {
               child: Column(
                 children: [
                   CustomAppBar(onPressed: () async {
+                    if (_saving) return;
+                    _saving = true;
                     String json =
                         jsonEncode(_controller.document.toDelta().toJson());
                     String plainText =

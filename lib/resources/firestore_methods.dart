@@ -153,17 +153,18 @@ class FirestoreService {
     return null;
   }
 
+  /// Apaga a nota e tira o id dela da pasta, sem esperar o servidor:
+  /// sem internet o `delete()` so termina quando a conexao volta (ver
+  /// [syncInBackground]). Se o servidor recusar, a mensagem vai para
+  /// [onSyncError].
   Future<String?> deleteNote(
       {required String uid,
       required String folder,
       void Function(String message)? onSyncError}) async {
-    try {
-      await _firestore.collection(userUid).doc(uid).delete();
-      await firestoreFolder.deleteDocFromFolder(
-          folderField: folder, noteUid: uid, onSyncError: onSyncError);
-    } on FirebaseException catch (e) {
-      return e.message;
-    }
+    syncInBackground(_firestore.collection(userUid).doc(uid).delete(),
+        fallback: 'Could not delete the note', onSyncError: onSyncError);
+    await firestoreFolder.deleteDocFromFolder(
+        folderField: folder, noteUid: uid, onSyncError: onSyncError);
     return null;
   }
 
